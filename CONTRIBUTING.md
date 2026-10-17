@@ -45,6 +45,15 @@ robocopy "E:\agent work\skill管理插件\plugin" `
 - `lib/` 是**真正被加载的产物**（改这里才生效）；
 - 两边改完必须保持一致。改 `lib/` 时同步改 `src/`，反之记录清楚。
 
+## 配套技能：sync-catalog-zh-descriptions
+
+维护中文备注映射表的技能，住在 `C:\Users\29736\.agents\skills\sync-catalog-zh-descriptions\SKILL.md`
+（**不在本仓库内**）。它规定了：取数路径、磁盘优先的合并逻辑、中文判据、
+翻译口径、内联进 `lib/client.js` 的手法、以及验证步骤。改映射表前先读它。
+
+该技能原名 `sync-picker-zh-descriptions`，2026-10-17 随 fork 一起改名
+（frontmatter `name` 与目录名都改了）。旧名在 DSH 的技能目录里已不存在。
+
 ## 提交粒度
 
 一次改一件事，message 写清「改了什么 + 为什么」。历史版本记录沿用上游 README
