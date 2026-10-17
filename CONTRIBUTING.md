@@ -12,15 +12,27 @@
 否则下次重装插件就把改动丢了。反过来也一样：改了本仓库要手动拷回
 node_modules 才生效（没有构建链，见下）。
 
+## 仓库结构
+
+```
+plugin/     ← 插件本体，node_modules\dsh-skill-catalog\ 的版本备份（提交这个）
+backup/     ← 本地回退用，不进仓库
+docs/       ← deck 插件的后端选择
+```
+
 ## 同步命令
 
-```powershell
-# node_modules → 本仓库（改完插件后）
-robocopy "E:\dsh-home\profiles\desktop\node_modules\dsh-skill-catalog" `
-         "E:\agent work\skill管理插件" /E /NFL /NDL /NJH /NJS /NP /XF "*.bak-*"
+改完 `node_modules\dsh-skill-catalog\` 后同步回 `plugin/`：
 
-# 本仓库 → node_modules（重装插件后）
-robocopy "E:\agent work\skill管理插件" `
+```powershell
+robocopy "E:\dsh-home\profiles\desktop\node_modules\dsh-skill-catalog" `
+         "E:\agent work\skill管理插件\plugin" /E /NFL /NDL /NJH /NJS /NP /XF "*.bak-*"
+```
+
+重装插件后从 `plugin/` 还原：
+
+```powershell
+robocopy "E:\agent work\skill管理插件\plugin" `
          "E:\dsh-home\profiles\desktop\node_modules\dsh-skill-catalog" /E /NFL /NDL /NJH /NJS /NP
 ```
 
