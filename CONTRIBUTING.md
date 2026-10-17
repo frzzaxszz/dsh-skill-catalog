@@ -6,7 +6,7 @@
 永不升级覆盖。工作区只是 Git 版本管理点；真正被 DSH 加载的副本在
 `E:\dsh-home\profiles\desktop\node_modules\dsh-skill-catalog\`。
 
-## 铁律：本仓库才是真相源，另两份从它同步
+## 铁律：本仓库 `plugin/` 是 Git 真相源，另两份从它同步
 
 改完本仓库 `plugin/` 里的任何文件，**必须同步到另两份**，否则下次 `pnpm install`
 就会把改动冲掉：
@@ -20,26 +20,40 @@
 profile 里本插件的依赖写成 `file:local-plugins/dsh-skill-catalog`，
 `dsh-plugin-update` 因此判 `source-install` → 永不升级（比单纯改名更强）。
 
+本机 `nodeLinker: hoisted`，pnpm 对 `file:` 依赖做的是**复制**而非硬链接
+（已用 `fsutil hardlink list` 验证两份是独立 inode），所以只改 `node_modules`
+那份真的会被冲掉。
+
 ## 同步命令
 
-本仓库 → local-plugins（pnpm 的真相源）：
+### 标准流程（改了 `plugin/`）
+
+推给 `local-plugins`（pnpm 的真相源），再让 pnpm 传播到 `node_modules`：
 
 ```powershell
 robocopy "E:\agent work\skill管理插件\plugin" `
-         "E:\dsh-home\profiles\desktop\local-plugins\dsh-skill-catalog" /E /NFL /NDL /NJH /NJS /NP
+         "E:\dsh-home\profiles\desktop\local-plugins\dsh-skill-catalog" /E /NFL /NDL /NJH /NJS /NP /XF "*.bak-*"
+node "E:\dsh-home\dsh-runtimes\dsh-primary-runtime\dependencies\pnpm\bin\pnpm.cjs" install --dir "E:\dsh-home\profiles\desktop"
 ```
 
-本仓库 → node_modules（让当前 DSH 尽快拿到，但生效仍要重启）：
+想立刻生效不想跑 pnpm，就直接再推一份到 `node_modules`（但下次 install 仍会以
+`local-plugins` 为准，所以那份必须已经同步过）：
 
 ```powershell
 robocopy "E:\agent work\skill管理插件\plugin" `
          "E:\dsh-home\profiles\desktop\node_modules\dsh-skill-catalog" /E /NFL /NDL /NJH /NJS /NP
 ```
 
-若是在 node_modules 上直接改的，先同步回仓库再往下走：
+> pnpm 不在 PATH。用 DSH 自带的
+> `E:\dsh-home\dsh-runtimes\dsh-primary-runtime\dependencies\pnpm\bin\pnpm.cjs`（v11.7.0）。
+> corepack 那份 12.8.1 模块缺失会报 MODULE_NOT_FOUND。
+
+### 反向（在 local-plugins 上直接热改过）
+
+拉回仓库并提交，否则下次 clone 丢失：
 
 ```powershell
-robocopy "E:\dsh-home\profiles\desktop\node_modules\dsh-skill-catalog" `
+robocopy "E:\dsh-home\profiles\desktop\local-plugins\dsh-skill-catalog" `
          "E:\agent work\skill管理插件\plugin" /E /NFL /NDL /NJH /NJS /NP /XF "*.bak-*"
 ```
 
