@@ -1,0 +1,10 @@
+# 记忆库：误删无法恢复，且不进版本库
+.dsh-meow/
+
+# 备份件：本地回退用，不进仓库
+backup/
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+node_modules/
