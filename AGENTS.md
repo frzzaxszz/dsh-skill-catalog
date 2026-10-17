@@ -29,6 +29,21 @@ robocopy "E:\dsh-home\profiles\desktop\node_modules\dsh-skill-catalog" `
          "E:\agent work\skill管理插件\plugin" /E /NFL /NDL /NJH /NJS /NP /XF "*.bak-*"
 ```
 
+## Three copies — keep them in sync
+
+| Copy | Role |
+| --- | --- |
+| `E:\dsh-home\profiles\desktop\node_modules\dsh-skill-catalog\` | what DSH loads |
+| `E:\dsh-home\profiles\desktop\local-plugins\dsh-skill-catalog\` | the `file:` dependency source; `pnpm install` copies it over `node_modules` |
+| `plugin/` in this repo | Git backup |
+
+The profile pins this plugin as `file:local-plugins/dsh-skill-catalog`, so
+`dsh-plugin-update` reports `blockedReason=source-install` and never upgrades it.
+
+**Edit `plugin/` first, then push it to the other two.** Changing only
+`node_modules` gets reverted by the next `pnpm install`, because `local-plugins`
+is the source of truth for that dependency.
+
 ## No build chain
 
 `build.mjs` was removed upstream and `esbuild` is not installed, so `plugin/src/` and

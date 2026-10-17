@@ -6,35 +6,45 @@
 永不升级覆盖。工作区只是 Git 版本管理点；真正被 DSH 加载的副本在
 `E:\dsh-home\profiles\desktop\node_modules\dsh-skill-catalog\`。
 
-## 铁律：node_modules 才是运行真相，本仓库是它的版本备份
+## 铁律：本仓库才是真相源，另两份从它同步
 
-改完 `node_modules\dsh-skill-catalog\` 里的任何文件，**必须同步回本仓库并提交**，
-否则下次重装插件就把改动丢了。反过来也一样：改了本仓库要手动拷回
-node_modules 才生效（没有构建链，见下）。
+改完本仓库 `plugin/` 里的任何文件，**必须同步到另两份**，否则下次 `pnpm install`
+就会把改动冲掉：
 
-## 仓库结构
+| 副本 | 角色 |
+| --- | --- |
+| `plugin/`（本仓库） | Git 真相源，**先改这里** |
+| `E:\dsh-home\profiles\desktop\local-plugins\dsh-skill-catalog\` | `file:` 依赖指向的源，pnpm install 时覆盖 node_modules |
+| `E:\dsh-home\profiles\desktop\node_modules\dsh-skill-catalog\` | DSH 实际加载的 |
 
-```
-plugin/     ← 插件本体，node_modules\dsh-skill-catalog\ 的版本备份（提交这个）
-backup/     ← 本地回退用，不进仓库
-docs/       ← deck 插件的后端选择
-```
+profile 里本插件的依赖写成 `file:local-plugins/dsh-skill-catalog`，
+`dsh-plugin-update` 因此判 `source-install` → 永不升级（比单纯改名更强）。
 
 ## 同步命令
 
-改完 `node_modules\dsh-skill-catalog\` 后同步回 `plugin/`：
+本仓库 → local-plugins（pnpm 的真相源）：
+
+```powershell
+robocopy "E:\agent work\skill管理插件\plugin" `
+         "E:\dsh-home\profiles\desktop\local-plugins\dsh-skill-catalog" /E /NFL /NDL /NJH /NJS /NP
+```
+
+本仓库 → node_modules（让当前 DSH 尽快拿到，但生效仍要重启）：
+
+```powershell
+robocopy "E:\agent work\skill管理插件\plugin" `
+         "E:\dsh-home\profiles\desktop\node_modules\dsh-skill-catalog" /E /NFL /NDL /NJH /NJS /NP
+```
+
+若是在 node_modules 上直接改的，先同步回仓库再往下走：
 
 ```powershell
 robocopy "E:\dsh-home\profiles\desktop\node_modules\dsh-skill-catalog" `
          "E:\agent work\skill管理插件\plugin" /E /NFL /NDL /NJH /NJS /NP /XF "*.bak-*"
 ```
 
-重装插件后从 `plugin/` 还原：
-
-```powershell
-robocopy "E:\agent work\skill管理插件\plugin" `
-         "E:\dsh-home\profiles\desktop\node_modules\dsh-skill-catalog" /E /NFL /NDL /NJH /NJS /NP
-```
+> **踩过的坑**：曾只改 `node_modules`，`local-plugins` 那份停在 58 键旧版，
+> 下次 install 就被覆盖回去。改完三份都要核对映射表键数一致。
 
 ## 关于构建
 
