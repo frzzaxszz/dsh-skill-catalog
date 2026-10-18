@@ -23,6 +23,7 @@ import { sessionIdOf, useWorkspaceCwd } from './session-view.js'
 import { SHARED_STATE_EVENT, pushSharedState, syncSharedState } from './shared-state.js'
 import { installSlashFuzzy, slashEnhancementMode, warmSlashSkill } from './slash-source.js'
 import { zhDescription } from './zh-descriptions.js'
+import { CATEGORY_ALL, categoryOf, categoriesPresent } from './categories.js'
 
 /** Required services: slot registry, host connection (official skills API), sessions (workspace cwd fallback), input triggers (/ fuzzy source). */
 export const inject = ['slots', 'connection', 'sessions', 'inputTriggers']
@@ -592,6 +593,49 @@ const listStyle = {
   padding: '0 6px 8px',
 }
 
+/**
+ * The category chip row under the search field.
+ *
+ * `flex: none` for the same reason the search field needed it: the panel is a
+ * column flex container with a max-height, so any child that can shrink gets
+ * shrunk — this row would collapse to a sliver and the list would keep all the
+ * height. Chips wrap instead of scrolling horizontally: a hidden horizontal
+ * scroll is a control nobody finds (see the 分类 design note).
+ */
+const chipRowStyle = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '6px',
+  flex: 'none',
+  margin: '0 12px 6px 14px',
+}
+
+/** One chip. Two characters, so eight of them fit in two rows at 340px. */
+function chipStyle(selected) {
+  return {
+    flex: 'none',
+    padding: '2px 9px',
+    borderRadius: '999px',
+    border: `1px solid ${selected
+      ? 'var(--dsw-alias-label-primary-bluish, #4cc9f0)'
+      : 'var(--dsw-alias-border-l1, rgba(128,128,128,0.35))'}`,
+    background: selected
+      ? 'var(--dsw-alias-interactive-bg-active, rgba(128,128,128,0.16))'
+      : 'transparent',
+    color: selected
+      ? 'var(--dsw-alias-label-primary-bluish, #4cc9f0)'
+      : 'var(--dsw-alias-label-tertiary, #8a94a6)',
+    fontFamily: FONT_FAMILY,
+    // 12px, not the row's 14px: the chips are a control strip, and matching the
+    // footer hint's size keeps them from competing with the skill names.
+    fontSize: '12px',
+    lineHeight: '18px',
+    cursor: 'pointer',
+    userSelect: 'none',
+    whiteSpace: 'nowrap',
+  }
+}
+
 const itemStyle = {
   display: 'flex',
   flexDirection: 'column',
@@ -793,6 +837,15 @@ function SkillPickerButton(props) {
    * section that is almost never used should not hold vertical space forever.
    */
   const [view, setView] = useState('all')
+  /**
+   * The active category chip, or `CATEGORY_ALL` (empty string) for no filter.
+   *
+   * Deliberately NOT persisted. Filtering is a momentary act — "show me the
+   * document skills for a second" — and a remembered filter would make the
+   * panel reopen looking like skills had gone missing. Every fresh open starts
+   * at 全部, which is where the user expects to land.
+   */
+  const [category, setCategory] = useState(CATEGORY_ALL)
   /** The search field is borderless now, so focus needs its own affordance. */
   const [searchFocus, setSearchFocus] = useState(false)
   const [query, setQuery] = useState('')
@@ -1066,6 +1119,8 @@ function SkillPickerButton(props) {
       // the panel should not reopen inside the closed-skills view.
       setNotice(undefined)
       setView('all')
+      // Every fresh open starts unfiltered (see the `category` state above).
+      setCategory(CATEGORY_ALL)
       void load()
       void loadDisabled()
     }
@@ -1140,11 +1195,24 @@ function SkillPickerButton(props) {
    * 国豪 caught the leak: a skill he had closed was still listed under 全部.
    */
   const disabledNames = new Set(disabledSkills.map((skill) => skill.name))
-  const groups = groupByPinned(
-    (skills ?? []).filter((skill) => !disabledNames.has(skill.name)),
-    usage,
-    pinned,
-  )
+  /**
+   * Every skill the list may offer, before any search or category filter.
+   *
+   * The closed ones are dropped here, once, so the chips below can never count
+   * a skill the list refuses to show — a chip labelled 1 that opens an empty
+   * list is worse than no chip at all.
+   */
+  const shownSkills = (skills ?? []).filter((skill) => !disabledNames.has(skill.name))
+  /**
+   * The category chips, computed from the whole visible set rather than from
+   * the current result: a chip must keep its place (and its count) while the
+   * user searches, otherwise the row jumps around under the cursor.
+   */
+  const categoryChips = categoriesPresent(shownSkills)
+  const categoryMatched = category === CATEGORY_ALL
+    ? shownSkills
+    : shownSkills.filter((skill) => categoryOf(skill) === category)
+  const groups = groupByPinned(categoryMatched, usage, pinned)
   const flat = groups.flatMap((group) => group.items)
 
   const filtered = (() => {
@@ -1178,7 +1246,7 @@ function SkillPickerButton(props) {
   // in range when the result list shrinks, and keep the highlighted row visible.
   useEffect(() => {
     setActive(0)
-  }, [query])
+  }, [query, category])
 
   useEffect(() => {
     setActive((cur) => Math.min(cur, Math.max(0, filtered.length - 1)))
@@ -1250,6 +1318,37 @@ function SkillPickerButton(props) {
             <div style={statusStyle}>加载中…</div>
           ) : (
             <>
+              {/* Category chips. They sit between the field and the list, only
+                  for the main view — the closed-skills view keeps its own
+                  small list and is reached rarely enough that filtering it
+                  would be a control with no user. */}
+              {view !== 'off' && categoryChips.length > 1 && (
+                <div style={chipRowStyle}>
+                  <span
+                    role="button"
+                    tabIndex={-1}
+                    title="不筛选分类"
+                    onClick={() => setCategory(CATEGORY_ALL)}
+                    style={chipStyle(category === CATEGORY_ALL)}
+                  >
+                    全部
+                  </span>
+                  {categoryChips.map((chip) => (
+                    <span
+                      key={chip.key}
+                      role="button"
+                      tabIndex={-1}
+                      // The full name and the one-line hint live in the tooltip:
+                      // the chip itself is two characters to fit eight of them.
+                      title={chip.hint === '' ? chip.full : `${chip.full}　·　${chip.hint}`}
+                      onClick={() => setCategory(category === chip.key ? CATEGORY_ALL : chip.key)}
+                      style={chipStyle(category === chip.key)}
+                    >
+                      {chip.key}
+                    </span>
+                  ))}
+                </div>
+              )}
               <div style={listStyle}>
                 {view === 'off' ? (
                   offFiltered.length === 0 ? (
@@ -1283,7 +1382,9 @@ function SkillPickerButton(props) {
                     ))
                   )
                 ) : filtered.length === 0 ? (
-                  <div style={statusStyle}>没有匹配的技能</div>
+                  <div style={statusStyle}>
+                    {category === CATEGORY_ALL ? '没有匹配的技能' : '这个分类下没有匹配的技能'}
+                  </div>
                 ) : (() => {
                   let itemIndex = 0
                   const renderItem = (skill, index) => (
@@ -1426,6 +1527,10 @@ function SkillPickerButton(props) {
                   onClick={() => {
                     setView(view === 'off' ? 'all' : 'off')
                     setQuery('')
+                    // Leaving the closed view returns to the unfiltered list;
+                    // a category chip left armed from before would hide skills
+                    // with nothing on screen explaining why.
+                    setCategory(CATEGORY_ALL)
                   }}
                   style={{
                     flex: 'none',

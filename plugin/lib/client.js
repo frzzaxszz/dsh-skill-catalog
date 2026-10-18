@@ -26363,6 +26363,183 @@ function zhDescription(skill) {
   if (typeof zh === 'string' && zh !== '') return zh
   return typeof skill?.description === 'string' ? skill.description : ''
 }
+// ── 技能分类表（显示层专用，由 dsh-skill-catalog 本地补丁内联）──────────
+/**
+ * 技能分类表 —— 只影响 ⚡ 面板的**筛选与显示层**。
+ *
+ * 为什么是本地映射表，而不是改 SKILL.md：
+ *
+ * 1. `description` 是喂给模型的，`category` 不是 DSH 的官方 frontmatter 字段，
+ *    写进 60+ 个技能也换不来任何宿主行为，只是把维护成本摊到每个文件上。
+ * 2. bundled / custom 技能住在 `node_modules` 里，插件一升级就覆盖，改文件必丢。
+ * 3. 和 `zh-descriptions.js` 同一条路：一张表、随时可改、可整体撤掉。
+ *
+ * 唯一的例外是**技能自己声明**的分类：frontmatter 写了 `category: 工程` 就用它
+ * （`categoryOf` 优先读 `skill.category`），所以将来自己写的技能想自带分类时，
+ * 不用回来改这张表。表里查不到的落「未分类」，未分类不单独成一个 chip，
+ * 只在「全部」里出现 —— 与面板「误归一类代价远小于丢一个技能」的老原则一致。
+ *
+ * @module dsh-skill-catalog/client/categories
+ */
+
+/** 「全部」的哨兵值：不是分类名，代表不筛选。 */
+const CATEGORY_ALL = ''
+
+/**
+ * 分类的顺序与短名。chip 上用两字短名省宽度（面板只有 340px），
+ * 全名放 `title` 里，鼠标悬停才出现。
+ *
+ * 顺序即展示顺序：越靠前越常用。
+ */
+const CATEGORIES = [
+  { key: '工程', full: '工程开发', hint: '写码、实现、评审、计划、分支收尾' },
+  { key: '排错', full: '诊断排错', hint: 'Bug、性能回归、会话复盘、沙箱 ACL' },
+  { key: '需求', full: '需求打磨', hint: '追问、规格、工单、分诊、原型' },
+  { key: '设计', full: '前端设计', hint: '界面、动效、文案语气' },
+  { key: '文档', full: '文档办公', hint: 'Word / Excel / PPT / Univer' },
+  { key: '调研', full: '调研写作', hint: '调研、教学、交接、导入、笔记' },
+  { key: '技能', full: '技能管理', hint: '写技能、用技能、自我改进' },
+  { key: '自动化', full: '自动化', hint: '浏览器、桌面、Dify 工作流' },
+]
+
+/** 短名 → 全名，供 chip 的 title 提示。 */
+const CATEGORY_FULL = Object.fromEntries(CATEGORIES.map((c) => [c.key, c.full]))
+
+/** 短名 → 一句话说明，供 chip 的 title 提示。 */
+const CATEGORY_HINT = Object.fromEntries(CATEGORIES.map((c) => [c.key, c.hint]))
+
+/**
+ * name → 分类短名。表里没有的技能落空串（未分类），面板上并进「全部」。
+ *
+ * 键必须是官方技能名（小写连字符）。`Self-Improving + Proactive Agent`
+ * 那条是 `$DSH_HOME/skills/self-improving` 的 frontmatter `name` 原文，
+ * 保留空格与加号，别"顺手规范化"——名字对不上就等于没分类。
+ */
+const CATEGORY_MAP = {
+  // ── 工程：写码、实现、评审、计划、分支 ─────────────────────────────
+  tdd: '工程',
+  'test-driven-development': '工程',
+  implement: '工程',
+  'implement-spec': '工程',
+  'code-review': '工程',
+  'receiving-code-review': '工程',
+  'requesting-code-review': '工程',
+  'codebase-design': '工程',
+  'domain-modeling': '工程',
+  'improve-codebase-architecture': '工程',
+  'writing-plans': '工程',
+  'executing-plans': '工程',
+  'finishing-a-development-branch': '工程',
+  'using-git-worktrees': '工程',
+  'dispatching-parallel-agents': '工程',
+  'subagent-driven-development': '工程',
+  'verification-before-completion': '工程',
+  'dev-god': '工程',
+
+  // ── 排错：出问题了才用，和「工程」分开，因为它是一条独立的流程 ──────
+  'diagnosing-bugs': '排错',
+  'systematic-debugging': '排错',
+  'diagnosing-superpowers': '排错',
+  'diagnose-windows-sandbox-acl': '排错',
+
+  // ── 需求：动手之前把想干什么问清楚 ────────────────────────────────
+  'grilling': '需求',
+  'grill-me': '需求',
+  'grill-with-docs': '需求',
+  brainstorming: '需求',
+  'to-spec': '需求',
+  'to-tickets': '需求',
+  'to-questionnaire': '需求',
+  triage: '需求',
+  wayfinder: '需求',
+  prototype: '需求',
+  'wait-what': '需求',
+  'ask-matt': '需求',
+
+  // ── 设计：看得见的那一层 ──────────────────────────────────────────
+  'oil-ui': '设计',
+  'motion-web': '设计',
+  'oil-tone': '设计',
+
+  // ── 文档：Office 与 Univer 两套，产出的是文件 ─────────────────────
+  'office-docx': '文档',
+  'office-xlsx': '文档',
+  'office-pptx': '文档',
+  univer: '文档',
+  'univer-base': '文档',
+  'univer-board': '文档',
+  'univer-cross-unit-formula': '文档',
+  'univer-doc': '文档',
+  'univer-embed': '文档',
+  'univer-sheet': '文档',
+  'univer-slide': '文档',
+
+  // ── 调研：读、写、交接、导入 ──────────────────────────────────────
+  research: '调研',
+  teach: '调研',
+  'writing-for-agents': '调研',
+  handoff: '调研',
+  'dsh-chat-import-convert': '调研',
+  'obsidian-curator': '调研',
+  pr: '调研',
+  retro: '调研',
+
+  // ── 技能：管这套技能本身 ──────────────────────────────────────────
+  'writing-skills': '技能',
+  'using-superpowers': '技能',
+  'self-improvement': '技能',
+  'Self-Improving + Proactive Agent': '技能',
+  'setup-matt-pocock-skills': '技能',
+  'sync-catalog-zh-descriptions': '技能',
+
+  // ── 自动化：对外部世界动手 ────────────────────────────────────────
+  'browser-skill': '自动化',
+  'agent-browser': '自动化',
+  'dify-workflow': '自动化',
+  'dify-deploy': '自动化',
+  wizard: '自动化',
+}
+
+/**
+ * 一个技能的分类短名，或空串（未分类）。
+ *
+ * 优先用技能自己声明的 `category`（host 扫描从 frontmatter 读出来、
+ * 注册表若将来带上也照收），其次查表。未知的一律空串 —— 宁可让它
+ * 出现在「全部」里，也不能因为分错类而从某个 chip 里消失。
+ *
+ * @param skill - `{ name, category }`
+ * @returns 分类短名（`工程` / `排错` / …）或 `''`
+ */
+function categoryOf(skill) {
+  const declared = typeof skill?.category === 'string' ? skill.category.trim() : ''
+  if (declared !== '') return declared
+  const name = typeof skill?.name === 'string' ? skill.name : ''
+  const mapped = CATEGORY_MAP[name]
+  return typeof mapped === 'string' ? mapped : ''
+}
+
+/**
+ * 当前列表里**实际存在**的分类，按 `CATEGORIES` 的顺序。
+ *
+ * 空分类不出 chip：一个点进去必然空白的按钮，比没有这个按钮更糟。
+ * 表外的分类（技能自己声明的、不在 CATEGORIES 里的）排在最后，用原名。
+ *
+ * @param skills - 面板当前展示的技能数组（已排除已关闭的）。
+ * @returns `[{ key, full, hint }]`
+ */
+function categoriesPresent(skills) {
+  const seen = new Set()
+  for (const skill of Array.isArray(skills) ? skills : []) {
+    const key = categoryOf(skill)
+    if (key !== '') seen.add(key)
+  }
+  const known = CATEGORIES.filter((c) => seen.has(c.key))
+  const extra = [...seen]
+    .filter((key) => !CATEGORIES.some((c) => c.key === key))
+    .sort((a, b) => a.localeCompare(b))
+    .map((key) => ({ key, full: key, hint: '' }))
+  return known.concat(extra)
+}
 /** 宿主注册表全量技能（bundled/custom/runtime），来自 explorer 路由。 */
 async function fetchRegistrySkills(cwdQuery) {
   try {
@@ -26603,6 +26780,29 @@ var listStyle = {
   flex: "auto",
   padding: "0 6px 8px"
 };
+var chipRowStyle = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "6px",
+  flex: "none",
+  margin: "0 12px 6px 14px"
+};
+function chipStyle(selected) {
+  return {
+    flex: "none",
+    padding: "2px 9px",
+    borderRadius: "999px",
+    border: "1px solid " + (selected ? "var(--dsw-alias-label-primary-bluish, #4cc9f0)" : "var(--dsw-alias-border-l1, rgba(128,128,128,0.35))"),
+    background: selected ? "var(--dsw-alias-interactive-bg-active, rgba(128,128,128,0.16))" : "transparent",
+    color: selected ? "var(--dsw-alias-label-primary-bluish, #4cc9f0)" : "var(--dsw-alias-label-tertiary, #8a94a6)",
+    fontFamily: FONT_FAMILY,
+    fontSize: "12px",
+    lineHeight: "18px",
+    cursor: "pointer",
+    userSelect: "none",
+    whiteSpace: "nowrap"
+  };
+}
 var itemStyle = {
   display: "flex",
   flexDirection: "column",
@@ -26729,6 +26929,7 @@ function SkillPickerButton(props) {
   }, [notice]);
   const [menu, setMenu] = (0, import_react.useState)(void 0);
   const [view, setView] = (0, import_react.useState)("all");
+  const [category, setCategory] = (0, import_react.useState)(CATEGORY_ALL);
   const [searchFocus, setSearchFocus] = (0, import_react.useState)(false);
   const [query, setQuery] = (0, import_react.useState)("");
   const [usage, setUsage] = (0, import_react.useState)(() => loadUsage());
@@ -26905,6 +27106,7 @@ function SkillPickerButton(props) {
       setUsage(loadUsage());
       setNotice(void 0);
       setView("all");
+      setCategory(CATEGORY_ALL);
       void load();
       void loadDisabled();
     }
@@ -26948,11 +27150,10 @@ function SkillPickerButton(props) {
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
   const disabledNames = new Set(disabledSkills.map((skill) => skill.name));
-  const groups = groupByPinned(
-    (skills ?? []).filter((skill) => !disabledNames.has(skill.name)),
-    usage,
-    pinned
-  );
+  const shownSkills = (skills ?? []).filter((skill) => !disabledNames.has(skill.name));
+  const categoryChips = categoriesPresent(shownSkills);
+  const categoryMatched = category === CATEGORY_ALL ? shownSkills : shownSkills.filter((skill) => categoryOf(skill) === category);
+  const groups = groupByPinned(categoryMatched, usage, pinned);
   const flat = groups.flatMap((group) => group.items);
   const filtered = (() => {
     const q = query.trim().toLowerCase();
@@ -26968,7 +27169,7 @@ function SkillPickerButton(props) {
   })();
   (0, import_react.useEffect)(() => {
     setActive(0);
-  }, [query]);
+  }, [query, category]);
   (0, import_react.useEffect)(() => {
     setActive((cur) => Math.min(cur, Math.max(0, filtered.length - 1)));
   }, [filtered.length]);
@@ -27035,6 +27236,31 @@ function SkillPickerButton(props) {
           }
         ),
         error !== void 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: statusStyle, children: `\u52A0\u8F7D\u5931\u8D25\uFF1A${error}` }) : skills === void 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: statusStyle, children: "\u52A0\u8F7D\u4E2D\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+          view !== "off" && categoryChips.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: chipRowStyle, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+              "span",
+              {
+                role: "button",
+                tabIndex: -1,
+                title: "\u4E0D\u7B5B\u9009\u5206\u7C7B",
+                onClick: () => setCategory(CATEGORY_ALL),
+                style: chipStyle(category === CATEGORY_ALL),
+                children: "\u5168\u90E8"
+              }
+            ),
+            categoryChips.map((chip) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+              "span",
+              {
+                role: "button",
+                tabIndex: -1,
+                title: chip.hint === "" ? chip.full : chip.full + "\u3000\xB7\u3000" + chip.hint,
+                onClick: () => setCategory(category === chip.key ? CATEGORY_ALL : chip.key),
+                style: chipStyle(category === chip.key),
+                children: chip.key
+              },
+              chip.key
+            ))
+          ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: listStyle, children: view === "off" ? offFiltered.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: statusStyle, children: query.trim() === "" ? "\u6CA1\u6709\u88AB\u5173\u95ED\u7684\u6280\u80FD" : "\u6CA1\u6709\u5339\u914D\u7684\u5DF2\u5173\u95ED\u6280\u80FD" }) : offFiltered.map((skill) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
             "div",
             {
@@ -27060,7 +27286,7 @@ function SkillPickerButton(props) {
               ]
             },
             `off-${skill.name}`
-          )) : filtered.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: statusStyle, children: "\u6CA1\u6709\u5339\u914D\u7684\u6280\u80FD" }) : (() => {
+          )) : filtered.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: statusStyle, children: category === CATEGORY_ALL ? "\u6CA1\u6709\u5339\u914D\u7684\u6280\u80FD" : "\u8FD9\u4E2A\u5206\u7C7B\u4E0B\u6CA1\u6709\u5339\u914D\u7684\u6280\u80FD" }) : (() => {
             let itemIndex = 0;
             const renderItem = (skill, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
               "button",
@@ -27176,6 +27402,7 @@ function SkillPickerButton(props) {
                     title: view === "off" ? "\u56DE\u5230\u5168\u90E8\u6280\u80FD" : "\u67E5\u770B\u88AB\u5173\u95ED\u7684\u6280\u80FD",
                     onClick: () => {
                       setView(view === "off" ? "all" : "off");
+                      setCategory(CATEGORY_ALL);
                       setQuery("");
                     },
                     style: {

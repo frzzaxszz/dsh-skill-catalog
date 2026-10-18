@@ -507,13 +507,16 @@ async function scanSkillsDirInto(map, dir) {
     // "unknown" (grouped with 自动) when that has nothing either. This field
     // never filters: a wrong label is the worst outcome.
     const modelInvocable = modelInvocableOf(meta);
+    // Optional category, for the panel's chip filter only (see client/categories.js).
+    const category = typeof meta.category === "string" ? meta.category.trim() : "";
     map.set(meta.name ?? entry.name, {
       name: meta.name ?? entry.name,
       description: meta.description ?? "",
       path: skillDir,
       entry: entryFile,
       disabled,
-      ...modelInvocable === void 0 ? {} : { modelInvocable }
+      ...modelInvocable === void 0 ? {} : { modelInvocable },
+      ...category === "" ? {} : { category }
     });
   }
 }

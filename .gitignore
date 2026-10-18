@@ -17,3 +17,7 @@ node_modules/
 .out-*
 .shot-*
 .asar-files.txt
+
+# 编译产物备份与内联中间件：本地回退/构建用，不进仓库
+*.bak-*
+*.inline.js

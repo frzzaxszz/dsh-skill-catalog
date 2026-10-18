@@ -228,6 +228,12 @@ async function scanSkillsDirInto(map, dir) {
     // "unknown" (grouped with 自动) when that has nothing either. This field
     // never filters: a wrong label is the worst outcome.
     const modelInvocable = modelInvocableOf(meta)
+    // Optional category, for the panel's chip filter only. Not an official DSH
+    // frontmatter field — nothing in the host reads it — but carrying it here is
+    // what makes a skill able to declare its own category instead of waiting for
+    // the client's map to catch up (see client/categories.js). Absent when the
+    // frontmatter says nothing, and the client then falls back to its map.
+    const category = typeof meta.category === 'string' ? meta.category.trim() : ''
     // Later writes win, so project-level skills override same-named user skills.
     map.set(meta.name ?? entry.name, {
       name: meta.name ?? entry.name,
@@ -236,6 +242,7 @@ async function scanSkillsDirInto(map, dir) {
       entry: entryFile,
       disabled,
       ...(modelInvocable === undefined ? {} : { modelInvocable }),
+      ...(category === '' ? {} : { category }),
     })
   }
 }
