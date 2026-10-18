@@ -147,7 +147,11 @@ function chipStyle(selected) {
   },
   {
     name: 'view-reset',
-    marker: 'setCategory(CATEGORY_ALL);\n                  }}',
+    // 这个 marker 必须靠「切视图语句紧跟着 setCategory」来判重。早先写成
+    // `setCategory(CATEGORY_ALL);\n }}` 这种跨行拼法，一旦文件的换行风格不匹配就
+    // 永远匹配不上，于是每次重跑都重复插入一行 —— lib 里就真的出现过两行一样的
+    // setCategory。现在改成两个正则之一（CRLF / LF 都能认），彻底避开换行风格问题。
+    markerRegex: /setView\(view === "off" \? "all" : "off"\);\r?\n\s+setCategory\(CATEGORY_ALL\);/,
     anchor: `                      setView(view === "off" ? "all" : "off");`,
     build: (anchor) => `${anchor}
                       setCategory(CATEGORY_ALL);`,
@@ -155,7 +159,11 @@ function chipStyle(selected) {
 ]
 
 for (const patch of PATCHES) {
-  if (code.includes(patch.marker)) {
+  // marker 支持两种形态：正则可表达跨行 / 换行风格无关的情形，字符串用于普通片段。
+  const already = patch.markerRegex !== undefined
+    ? patch.markerRegex.test(code)
+    : code.includes(patch.marker)
+  if (already) {
     skipped.push(patch.name)
     continue
   }

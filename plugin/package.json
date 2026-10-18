@@ -10,14 +10,9 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "node build.mjs",
-    "test": "node --test",
     "check:categories": "node scripts/check-categories.mjs",
-    "inline:categories": "node scripts/inline-categories.mjs"
-  },
-  "devDependencies": {
-    "esbuild": "^0.25.0",
-    "fuzzysort": "^4.0.2"
+    "inline:categories": "node scripts/inline-categories.mjs",
+    "inline:bundled-skills": "node scripts/inline-bundled-skills.mjs"
   },
   "dsh": {
     "bundle": {

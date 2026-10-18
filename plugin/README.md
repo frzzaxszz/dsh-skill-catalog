@@ -252,48 +252,73 @@ source.onPick = (args) => { track(args?.candidate?.name); return onPick.call(sou
 
 ## 开发
 
+> ⚠️ **这个 fork 没有构建链。** 上游的 `build.mjs` 在 fork 时被裁掉了，esbuild 也没有安装，
+> 所以 `src/` 与 `lib/` 是**两份手维护的真相源**——改源码之后要把改动同步到 `lib/`，
+> 而不是跑一条构建命令。`lib/` 才是实际被加载的那份（`package.json` 的 `exports` 指向它）。
+
 ```sh
-# 安装依赖（提供 esbuild / fuzzysort / pinyin-pro）
-npm install
-
-# 构建（源码 src/ → 产物 lib/；client 半自动包 __ModuleLoader__ 握手）
-npm run build
-
-# 安装到 web profile（link 模式，改源码即生效）
+# 安装到 web profile（link 模式）
 dsh plugin --profile web add link:$PWD
 
-# 语法自检（产物）
+# 语法自检（两份真相源都要过）
 node --check lib/index.js
 node --check lib/client.js
+node --check src/index.js
+
+# 片段内联：把 src 里的分类表 / 随包技能模块写进 lib 产物（幂等，可重复跑）
+npm run inline:categories
+npm run inline:bundled-skills
+
+# 分类表自测（拿宿主真实技能全量跑）
+npm run check:categories
 ```
 
-> ⚠️ 改完源码**必须 `npm run build`**：`lib/client.js` 是构建产物，ESM 源码不能直接作
-> 为 client bundle 加载——DSH web shell 要求 client bundle 以
-> `window.__ModuleLoader__.load({ id, factory })` 的 CJS 握手格式注册，否则启动报
+> ⚠️ `lib/client.js` 必须以 `window.__ModuleLoader__.load({ id, factory })` 的 CJS 握手格式
+> 存在，否则 DSH web shell 启动报
 > `loaded without registering "dsh-skill-catalog" via __ModuleLoader__.load`。
-> 构建脚本（`build.mjs`）会通过 esbuild 的 banner/footer 自动注入这段握手。
+> 手改 `lib/client.js` 时**不要动这个外壳**，只在 factory 作用域里增删代码。
+
+**改 `src/` 后必须做的三件事**：① 把改动同步进对应的 `lib/` 文件（`client.js` 里中文写
+`\uXXXX` 转义、`undefined` 写 `void 0`，JSDoc 跟着走）；② 若改的是分类表或随包技能模块，
+跑对应的 `inline:*` 脚本；③ `node --check` 两份都过。
+
+**三副本同步**（本机）：`plugin/` 是 Git 真相源，还要推到
+`profiles/desktop/local-plugins/dsh-skill-catalog`（`file:` 依赖源）与
+`profiles/desktop/node_modules/dsh-skill-catalog`（实际加载）。**`pnpm install` 不会替你同步**
+（实测对 `file:` 依赖一律报 `Already up to date` 且不复制文件），必须直接 `robocopy` 两份。
 
 目录结构：
 
 ```
-dsh-skill-catalog/
-├── package.json        # dsh.bundle.patch + dsh.client 声明 + build script
-├── cordis.patch.yml    # bundle patch：把插件行插入 web profile
-├── build.mjs           # esbuild 构建：host ESM + client CJS(__ModuleLoader__握手)
-├── src/
-│   ├── index.js        # host 半源码：/dsh-skill-catalog/skills 路由 + prompt section
-│   └── client/
-│       └── index.jsx   # client 半源码：conversation.input.right 插槽组件
-├── lib/                # 构建产物（勿手改，`npm run build` 生成）
-│   ├── index.js
-│   └── client.js
-└── README.md
+dsh-skill-catalog/            ← 仓库根：只放仓库级说明
+├── README.md
+├── AGENTS.md / CONTRIBUTING.md
+└── plugin/                   ← 真正的插件包（package.json 在这一层）
+    ├── package.json          # dsh.bundle.patch + dsh.client 声明
+    ├── cordis.patch.yml      # bundle patch：把插件行插入 web profile
+    ├── src/
+    │   ├── index.js          # host 半源码：路由 + prompt section + 随包技能 provider
+    │   ├── bundled-skills.js # 随包技能 provider
+    │   └── client/
+    │       ├── index.jsx     # client 半：conversation.input.right 插槽组件
+    │       ├── categories.js # 8 类分类映射表
+    │       └── zh-descriptions.js  # 中文备注映射表
+    ├── bundled-skills/       # 随包技能（SKILL.md），随插件一起发
+    ├── scripts/              # 内联与自测脚本
+    └── lib/                  # 运行产物（手维护，见上）
+        ├── index.js
+        └── client.js
 ```
 
 ## 依赖
 
+插件运行时**只需要宿主提供的模块**（`react`、`react/jsx-runtime` 与各 `@deepseek-ai/*` peer）。
+`fuzzysort` 与 `pinyin-pro` 虽然写在 `devDependencies` / `dependencies` 里，但它们的代码
+**已被内联进 `lib/client.js`**，所以装好的插件在运行时不会去 `require` 它们。
+
 - host：`@deepseek-ai/cordis`、`@deepseek-ai/dsh-host-webserver`、`@deepseek-ai/dsh-skill`、`@deepseek-ai/dsh-system-prompt`
-- client：`@deepseek-ai/dsh-client-runtime`、`@deepseek-ai/dsh-client-ui-slots`、`react`、`pinyin-pro`（拼音索引，打包进 client bundle）
+- client：`@deepseek-ai/dsh-client-runtime`、`@deepseek-ai/dsh-client-ui-slots`、`react`
+- 仅构建期用（源码 import、产物已内联）：`fuzzysort`、`pinyin-pro`
 
 ## License
 
