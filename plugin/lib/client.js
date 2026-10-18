@@ -26718,7 +26718,7 @@ var FONT_FAMILY = 'var(--dsw-font-family, -apple-system, BlinkMacSystemFont, "Se
 var popoverStyle = {
   position: "fixed",
   width: "340px",
-  maxHeight: "320px",
+  maxHeight: "380px",
   display: "flex",
   flexDirection: "column",
   background: "var(--dsw-specific-tip, #1e2533)",

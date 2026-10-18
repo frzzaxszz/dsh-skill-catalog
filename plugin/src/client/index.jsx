@@ -503,7 +503,11 @@ const FONT_FAMILY = 'var(--dsw-font-family, -apple-system, BlinkMacSystemFont, "
 const popoverStyle = {
   position: 'fixed',
   width: '340px',
-  maxHeight: '320px',
+  // 380, not 320: the category chip row is permanent furniture (≈56px for two
+  // rows), and at 320 the list was left with barely three visible skill rows.
+  // Raising the ceiling keeps the browsing area the same size it was before
+  // chips existed instead of making it pay for them.
+  maxHeight: '380px',
   display: 'flex',
   flexDirection: 'column',
   background: 'var(--dsw-specific-tip, #1e2533)',
