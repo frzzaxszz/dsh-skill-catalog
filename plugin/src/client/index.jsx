@@ -197,6 +197,46 @@ function isUserFacingSkill(skill) {
   return flag !== false
 }
 
+/** Model may call it without the user typing `/name`. */
+const INVOKE_AUTO = 'auto'
+/** Only the user's explicit `/name` gesture loads it. */
+const INVOKE_MANUAL = 'manual'
+/** No source told us — grouped with 自动 rather than shown as its own bucket. */
+const INVOKE_UNKNOWN = 'unknown'
+
+/**
+ * How a skill gets invoked, for the panel's 「自动 / 手动」 grouping.
+ *
+ * Same two DTO shapes `isUserFacingSkill` already handles: the official
+ * `skills/list` entry carries a flat `modelInvocable`, the registry summary
+ * nests it under `invocation`. Only an explicit boolean decides; anything else
+ * (absent, null, a string) is UNKNOWN, which is deliberately NOT a failure —
+ * it means "this source did not say", and the panel then groups the skill with
+ * 自动 rather than inventing a third visible bucket.
+ *
+ * This is display-only and never filters: a wrong guess costs a misplaced
+ * label, never a missing skill.
+ *
+ * @param value - `modelInvocable` in either DTO shape.
+ */
+function normalizeInvoke(value) {
+  if (value === true) return INVOKE_AUTO
+  if (value === false) return INVOKE_MANUAL
+  return INVOKE_UNKNOWN
+}
+
+/**
+ * `invoke` of an already-normalised panel item, defaulting to UNKNOWN.
+ *
+ * The field is written by the three data sources through `normalizeInvoke`
+ * (boolean in, string out), so it is ALREADY the final label — re-running it
+ * through `normalizeInvoke` would fold every 'auto' back to UNKNOWN, because
+ * that helper keys on the raw boolean, not on the label.
+ */
+function invokeOf(skill) {
+  return typeof skill?.invoke === 'string' ? skill.invoke : INVOKE_UNKNOWN
+}
+
 /**
  * Every skill the host's registry knows about, flattened out of the explorer
  * route's source groups.
@@ -230,7 +270,12 @@ async function fetchRegistrySkills(cwdQuery) {
         // Same contract as the disk scan: never offer what the official `/`
         // menu hides (issue #10).
         if (!isUserFacingSkill(skill)) continue
-        out.push({ name: skill.name, description: zhDescription(skill) })
+        out.push({
+          name: skill.name,
+          description: zhDescription(skill),
+          // Registry summaries nest the invocation flags; see normalizeInvoke.
+          invoke: normalizeInvoke(skill.invocation?.modelInvocable),
+        })
       }
     }
     return out
@@ -259,29 +304,51 @@ function rankByUsage(skills, usage) {
 }
 
 /**
- * Grouped ordering for the ⚡ panel: pinned (manual, pinned order) first,
- * then recently/frequently used (usage order), then the untouched rest (by
- * name). Groups with no members are dropped. A fresh structure is returned;
- * the input arrays are untouched.
+ * Grouped ordering for the ⚡ panel: pinned (manual, pinned order) first, then
+ * recently/frequently used (usage order), then the untouched rest (by name) —
+ * each of those two split into 自动 / 手动 by how the skill is invoked. Groups
+ * with no members are dropped. A fresh structure is returned; the input arrays
+ * are untouched.
  */
 function groupByPinned(skills, usage, pinned) {
   const pinnedSet = new Set(pinned)
   const pinnedList = pinned.map((name) => skills.find((s) => s.name === name)).filter(Boolean)
   const ranked = rankByUsage(skills, usage)
-  const recent = []
-  const rest = []
+  // 「最近使用」 and 「全部」 each split by how the skill is invoked, so the
+  // 自动/手动 answer to "which of these can the model call on its own?" is one
+  // glance away instead of a per-row guess.
+  //
+  // 置顶 deliberately does NOT split: it is the user's own ordering, and
+  // cutting it in half would make the pin meaningless.
+  //
+  // UNKNOWN joins 自动, it does not get a bucket of its own. On this machine
+  // most entries arrive UNKNOWN (the official `/` candidates carry no invoke
+  // flag at all, and the disk scan only has it for skills that say
+  // `disable-model-invocation`), so a third bucket would be a mostly-empty
+  // wall of noise; and of the two wrong guesses available, "auto" is the one
+  // that keeps the skill where the user already expects it.
+  const buckets = {
+    recentAuto: [], recentManual: [], restAuto: [], restManual: [],
+  }
   for (const skill of ranked) {
     if (pinnedSet.has(skill.name)) continue
-    if (usage[skill.name] !== undefined) recent.push(skill)
-    else rest.push(skill)
+    const auto = invokeOf(skill) !== INVOKE_MANUAL
+    const used = usage[skill.name] !== undefined
+    if (used) {
+      ;(auto ? buckets.recentAuto : buckets.recentManual).push(skill)
+    } else {
+      ;(auto ? buckets.restAuto : buckets.restManual).push(skill)
+    }
   }
   return [
     // Plain titles, no emoji: these are section headings, and DSH's own
     // headings (侧栏的「工作区」/「会话」) are plain text. 国豪: "加图标，那前面
     // 一团火，这种图标看着不像 DSH 的风格".
     { title: '置顶', items: pinnedList },
-    { title: '最近使用', items: recent },
-    { title: '全部', items: rest },
+    { title: '最近使用 · 自动', items: buckets.recentAuto },
+    { title: '最近使用 · 手动', items: buckets.recentManual },
+    { title: '全部 · 自动', items: buckets.restAuto },
+    { title: '全部 · 手动', items: buckets.restManual },
   ].filter((group) => group.items.length > 0)
 }
 
@@ -412,18 +479,28 @@ const FONT_FAMILY = 'var(--dsw-font-family, -apple-system, BlinkMacSystemFont, "
 /**
  * Panel placement.
  *
- * Fixed (not absolute) and anchored to the RIGHT EDGE OF THE WINDOW, with the
- * vertical offset measured from the ⚡ button so it still opens just above the
- * composer.
+ * Fixed (not absolute), but no longer anchored to the RIGHT EDGE OF THE WINDOW.
+ * It used to be (`right: 24px`) with only the vertical offset measured from the
+ * ⚡ button; that is what broke the panel whenever the RIGHT SIDEBAR was open.
  *
- * Why not `absolute; right: 0` on the button's own wrapper — which is what it
- * used to be: the ⚡ sits next to the model picker, well left of the composer's
- * right edge, so the panel was right-aligned to *that* and threw itself across
- * the middle of the conversation, covering the text. 国豪 spotted it.
+ * Why: the sidebar is a real grid column on the right (≈580px on this machine).
+ * A fixed panel pinned to `right: 24px` at `width: 340px` therefore lands at
+ * x ≈ viewport-364 … viewport-24 — i.e. ENTIRELY INSIDE the right sidebar's
+ * rectangle. The sidebar paints over it (it is a later sibling in the grid and
+ * its dock layer sits above), so clicking ⚡ looked like "nothing happened":
+ * the panel did render, just underneath the sidebar. 国豪 reported exactly this.
+ *
+ * So the horizontal anchor is now measured from the button at open time and
+ * passed in as `left`, clamped to stay on screen. `right` is deliberately gone:
+ * keeping both would let the browser resolve the width conflict by stretching.
+ *
+ * The original complaint that led to the window-edge anchor ("the panel threw
+ * itself across the middle of the conversation, covering the text") is still
+ * honoured: `panelLeft` right-aligns the panel's edge to the button's edge, so
+ * it opens over the composer rather than over the transcript.
  */
 const popoverStyle = {
   position: 'fixed',
-  right: '24px',
   width: '340px',
   maxHeight: '320px',
   display: 'flex',
@@ -437,6 +514,30 @@ const popoverStyle = {
   fontFamily: FONT_FAMILY,
   fontSize: '14px',
   lineHeight: '24px',
+}
+
+/** Panel width, so the clamp below and the style above cannot disagree. */
+const POPOVER_WIDTH = 340
+
+/** Minimum gap between the panel and either viewport edge. */
+const POPOVER_MARGIN = 12
+
+/**
+ * Horizontal position for the panel, measured from the ⚡ button.
+ *
+ * Right-aligned to the button (the panel's right edge matches the button's
+ * right edge), then clamped into the viewport. Right-aligning is what keeps the
+ * panel over the composer instead of over the conversation text.
+ *
+ * @param rect - the button's `getBoundingClientRect()`.
+ * @returns `{ left }` in viewport pixels, always fully on screen.
+ */
+function popoverLeftFor(rect) {
+  const viewport = window.innerWidth || 1024
+  const preferRight = rect.right
+  const left = Math.round(preferRight - POPOVER_WIDTH)
+  const maxLeft = viewport - POPOVER_WIDTH - POPOVER_MARGIN
+  return Math.max(POPOVER_MARGIN, Math.min(left, maxLeft))
 }
 
 /**
@@ -704,10 +805,20 @@ function SkillPickerButton(props) {
   const longPressRef = useRef(0)
   /**
    * Distance from the window bottom to the panel's bottom edge, measured from
-   * the ⚡ button each time the panel opens. See `popoverStyle`: the horizontal
-   * anchor is the window's right edge, only the height follows the button.
+   * the ⚡ button each time the panel opens.
    */
   const [panelBottom, setPanelBottom] = useState(88)
+  /**
+   * Distance from the window's LEFT edge to the panel's left edge, measured
+   * from the ⚡ button each time the panel opens.
+   *
+   * This replaced a hardcoded `right: 24px`. Anchoring to the window's right
+   * edge put the panel inside the right sidebar's rectangle whenever that
+   * sidebar was open, so the panel rendered underneath it and the click looked
+   * like a no-op (国豪's report). Measuring from the button also keeps the
+   * panel over the composer, which is what the old anchor was protecting.
+   */
+  const [panelLeft, setPanelLeft] = useState(undefined)
 
   // The usage store is shared with the official `/` menu: picks made there go
   // through window.__dshSkillPickerTrack (localStorage only). Refresh this
@@ -791,7 +902,13 @@ function SkillPickerButton(props) {
       const listed = Array.isArray(json.skills) ? json.skills : []
       // The scan deliberately reports switched-off skills too (that is how the
       // closed view can list them), but they must never enter THIS list.
-      const disk = listed.filter((skill) => isUserFacingSkill(skill) && skill.disabled !== true)
+      const disk = listed
+        .filter((skill) => isUserFacingSkill(skill) && skill.disabled !== true)
+        // The host scan reports `modelInvocable` for a skill whose frontmatter
+        // states a `disable-model-invocation` policy; a skill that says nothing
+        // arrives without it and normalises to UNKNOWN. `extra` below already
+        // carries its own, from the registry.
+        .map((skill) => ({ ...skill, invoke: normalizeInvoke(skill.modelInvocable) }))
       // That scan only reads the four filesystem roots, so it structurally
       // misses every skill that is not a file on disk: `bundled` (DSH and its
       // plugins ship their own), `custom` (configured extra roots) and
@@ -935,6 +1052,10 @@ function SkillPickerButton(props) {
       if (el !== null) {
         const rect = el.getBoundingClientRect()
         setPanelBottom(Math.max(64, Math.round(window.innerHeight - rect.top + 8)))
+        // Measured every open, not once: the button MOVES horizontally when the
+        // right sidebar opens/closes, and a stale horizontal anchor is the exact
+        // bug this fixes.
+        setPanelLeft(popoverLeftFor(rect))
       }
       // Pull first: a pin or a pick made on another client (desktop ↔ web ↔
       // phone) should be visible the moment this panel opens. The pull fires
@@ -1104,7 +1225,15 @@ function SkillPickerButton(props) {
         <BoltIcon />
       </button>
       {open && (
-        <div style={{ ...popoverStyle, bottom: `${panelBottom}px` }}>
+        <div
+          style={{
+            ...popoverStyle,
+            bottom: `${panelBottom}px`,
+            // Undefined only on the very first paint before `toggle` measured;
+            // falling back to `24px` keeps it on screen for that one frame.
+            ...(panelLeft === undefined ? { right: '24px' } : { left: `${panelLeft}px` }),
+          }}
+        >
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -1417,6 +1546,9 @@ export function apply(ctx) {
     return raw.filter(isUserFacingSkill).map((skill) => ({
       name: skill.name,
       description: zhDescription(skill),
+      // `SkillEntry` carries a flat `modelInvocable`; every kernel that omits it
+      // normalises to UNKNOWN, which the panel groups with 自动.
+      invoke: normalizeInvoke(skill.modelInvocable),
     }))
   }
 

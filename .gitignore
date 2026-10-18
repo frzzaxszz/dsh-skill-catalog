@@ -8,3 +8,12 @@ backup/
 .DS_Store
 Thumbs.db
 node_modules/
+
+# 诊断/取证产物：从 app.asar 提取的包、截图、临时脚本。
+# 都是排查时的一次性副产物，不该进版本库（2026-10-18 修右侧栏 bug 时留下过 79 个）。
+.tmp-*
+.diag-*
+.diag/
+.out-*
+.shot-*
+.asar-files.txt

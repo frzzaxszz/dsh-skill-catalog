@@ -452,6 +452,29 @@ function isUserInvocableSkill(meta, content) {
     return false;
   }
 }
+/**
+ * Read the model-invocation policy of a scanned skill as a tri-state.
+ *
+ * Mirrors the official filesystem provider's semantics, which key off
+ * `disable-model-invocation` (NOT a `modelInvocable` flag): absent means "the
+ * model may invoke it", an explicit `true`/`false` is honoured, and a
+ * malformed value falls back to "permitted" so a typo can never hide a skill
+ * from the panel.
+ *
+ * Used only for the browser half's 「自动 / 手动」 grouping; it never filters
+ * anything out of the list, so a wrong guess costs a wrong label, not a
+ * missing skill.
+ *
+ * @param meta - parsed frontmatter map.
+ * @returns true (auto), false (manual), or undefined (unknown).
+ */
+function modelInvocableOf(meta) {
+  try {
+    return frontmatterBoolean(meta, "disable-model-invocation") !== true;
+  } catch {
+    return void 0;
+  }
+}
 async function scanSkillsDirInto(map, dir) {
   let entries;
   try {
@@ -478,12 +501,19 @@ async function scanSkillsDirInto(map, dir) {
     }
     const meta = parseFrontmatter(content);
     if (!isUserInvocableSkill(meta, content)) continue;
+    // Model-invocation policy, for the panel's 「自动 / 手动」 grouping only.
+    // Absent on a skill whose frontmatter says nothing about it — the browser
+    // half then falls back to whatever the official registry knows, and to
+    // "unknown" (grouped with 自动) when that has nothing either. This field
+    // never filters: a wrong label is the worst outcome.
+    const modelInvocable = modelInvocableOf(meta);
     map.set(meta.name ?? entry.name, {
       name: meta.name ?? entry.name,
       description: meta.description ?? "",
       path: skillDir,
       entry: entryFile,
-      disabled
+      disabled,
+      ...modelInvocable === void 0 ? {} : { modelInvocable }
     });
   }
 }
