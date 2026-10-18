@@ -1,33 +1,16 @@
 # dsh-skill-catalog
 
-> **这是 `dsh-skill-catalog` 的个人 fork，未发布到 npm，永远不会被上游升级覆盖。**
-> 改名换版本线，是为了让 `dsh-skill-catalog` 的升级再也冲不掉本机的定制改动。
+> **DSH Web GUI 的技能面板**：全量技能发现 + 全中文备注 + **8 类分类筛选** + 技能管理（置顶 / 关闭 / 定位 / 卸载可撤回）。
+> 个人 fork，不发布到 npm，永不被上游升级覆盖。
 
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/frzzaxszz/dsh-skill-catalog/blob/main/LICENSE)
+[![DSH](https://img.shields.io/badge/DSH-%E2%89%A50.1.1--rc.1-4cc9f0)](https://github.com/deepseek-ai/deepseek-harness)
 
-> **技能记不住名字？官方 `/` 补全靠前缀记忆，装了几十个技能谁记得住？** 本插件让技能**看得见、翻得到、选得快**——点一下 ⚡，全部技能带中文备注排在你面前，搜索、点选、插入，随消息发出自动加载。
+## 这是什么
 
-## ⚡ 安装（本 fork）
+官方内置了 `/` 技能补全，但它是**记忆驱动**的——你得先记得技能名。技能一多就抓瞎。本插件在输入框旁加一个 ⚡ 按钮：点开就是全部技能，带中文备注、按分类可筛、拼音可搜，选中后把 `/技能名` 插进发送框，随消息发出由 DSH 原生机制加载。
 
-本 fork **不在 npm 上**，只能从 GitHub 装：
-
-```sh
-dsh plugin --profile web add "git+https://github.com/frzzaxszz/dsh-skill-catalog.git"
-```
-
-要指定某个 commit：
-
-```sh
-dsh plugin --profile web add "git+https://github.com/frzzaxszz/dsh-skill-catalog.git#<commit-sha>"
-```
-
-一条命令装好并注入 DSH web profile，重启 `dsh web`（或刷新页面）即生效。
-
-DSH Web GUI 的技能面板：在输入框（composer）工具行右侧加一个按钮，点开可以**搜索并点选已安装的技能**，选中后把官方 `/技能名` 手势插入发送框——随消息一起发出，DSH 原生机制就会自动加载该技能并执行。WorkBuddy 式"把技能写进发送框"的交互，DeepSeek Harness 复刻版。
-
-English: A skill catalog for the DSH Web GUI — a button in the composer's right tool row opens a searchable list of installed skills; picking one inserts the official `/skill-name` gesture into the draft, so DSH's native user-invocation path loads the skill with your message.
-
-当前版本：**v1.1.0**（fork 基线，承接上游 `dsh-skill-catalog@0.5.28` 的全部功能：技能管理（置顶 / 关闭 / 定位 / 卸载可撤回）、跨端共享状态、`/` 菜单运行时接管、模糊+拼音匹配，外加**全量技能发现**、**全中文备注**与**按分类筛选**三项本 fork 定制）
+**记得名字用官方 `/`，忘了名字用 ⚡——两者互补，可同时使用。**
 
 ## 为什么用它（vs 官方 `/` 补全）
 
@@ -37,54 +20,103 @@ English: A skill catalog for the DSH Web GUI — a button in the composer's righ
 |---|---|---|
 | 触发 | 输入框打 `/` | 输入框旁 ⚡ 按钮 |
 | 查找方式 | 前缀记忆驱动，**忘了名字就找不到** | 全列表浏览 + 关键字搜索，**忘了名字也能翻到** |
-| 中文技能 | 只能打名字/前缀 | **拼音直搜**：`ji yi` / `jiyi` / `jy` 都能搜到「备份记忆」类中文技能（v0.3.0） |
+| 分类筛选 | 无 | **8 类 chips**：工程 / 排错 / 需求 / 设计 / 文档 / 调研 / 技能 / 自动化 |
+| 中文技能 | 只能打名字/前缀 | **拼音直搜**：`ji yi` / `jiyi` / `jy` 都能搜到中文技能 |
 | 排序 | 固定 | **最近使用置顶、常用靠前** |
-| 描述可见 | 精简 | 完整描述一眼看全 |
+| 描述可见 | 精简 | 完整描述（中文）一眼看全 |
 
 **记得名字用官方，忘了名字用本插件——两者互补，可同时使用。**
 
 ## 特性
 
 - ⚡ 一键弹出全部技能（闪电图标，人人看得懂）
-- **`/` 直接补全**：输入斜杠即列出全部技能，**模糊搜索**（技能名+描述任意匹配）+ **常用排序**（v0.2.0）
-- 🔤 **拼音搜索**：技能名和描述都生成拼音索引（全拼带空格 `ji yi` / 连打 `jiyi` / 首字母 `jy`），中文技能不用记字就能搜（v0.3.0）
+- **8 类分类筛选**：搜索框下排 chips，点一个只看该分类，再点一次回到「全部」
+- 🔤 **拼音搜索**：技能名和描述都生成拼音索引（全拼带空格 `ji yi` / 连打 `jiyi` / 首字母 `jy`），中文技能不用记字就能搜
 - 🔍 实时搜索（技能名 / 描述 / 拼音都搜）
-- ⌨️ **键盘导航**：弹层内 ↑↓ 选择、Enter 插入、Esc 关闭，全程不碰鼠标（v0.2.2）
-- 🧠 **最近使用置顶、常用靠前**的智能排序（WorkBuddy 同款）
-- 📋 走官方宿主 skills API（与 DSH 内置 `/` 补全同一数据源，自动覆盖用户级+项目级技能）
-- 🧩 插入官方 `/技能名` 手势，加载/执行走 DSH 原生机制，**零 agent 侧改动**
+- ⌨️ **键盘导航**：弹层内 ↑↓ 选择、Enter 插入、Esc 关闭，全程不碰鼠标
+- 🧠 **最近使用置顶、常用靠前**的智能排序
+- 🗂️ **自动 / 手动**分组：一眼看出哪些技能模型能自己调、哪些只能你手动 `/` 调
+- 🛠️ **技能管理**：右键（手机长按）置顶 / 关闭 / 在文件管理器定位 / 卸载（移入备份，可撤回）
+- 🌏 **跨端共享**：桌面端与网页端的置顶、使用记录共用一份
 - 🎨 跟随 Web UI 主题（CSS 变量），浅色/深色自适应
-- 📦 纯 client + host 双半插件（拼音库已打包进 client bundle，无额外运行时安装）
+- 📦 纯 client + host 双半插件，无额外运行时安装
+
+## 技能管理
+
+右键任意技能行（手机长按 500ms）：
+
+| 动作 | 效果 |
+| --- | --- |
+| 置顶到顶部 | 固定在该位置，顺序由你排 |
+| 关闭 | 把 `SKILL.md` 改名成 `SKILL.md.disabled` —— **agent 真的不再加载它**，不是障眼法 |
+| 在文件管理器中定位 | 打开技能所在目录 |
+| 卸载 | 移进 `$DSH_HOME/skill-backups/<时间戳>-<名字>/`，面板里可**撤回**；代码里没有任何破坏性删除 |
+
+关闭的技能不会消失：面板右下角「已关闭 N」可以进去把它们开回来。
+
+## 分类筛选
+
+搜索框下面一排 chips，点一个只看该分类，再点一次回到「全部」：
+
+| chip | 全名 | 覆盖什么 |
+| --- | --- | --- |
+| 工程 | 工程开发 | 写码、实现、评审、代码设计、计划、分支收尾 |
+| 排错 | 诊断排错 | Bug、性能回归、会话复盘、沙箱 ACL |
+| 需求 | 需求打磨 | 连环追问、规格、工单、分诊、原型 |
+| 设计 | 前端设计 | 界面、动效、文案语气 |
+| 文档 | 文档办公 | Word / Excel / PPT / Univer 全套 |
+| 调研 | 调研写作 | 调研、教学、交接、导入、笔记、PR 描述 |
+| 技能 | 技能管理 | 写技能、用技能、自我改进 |
+| 自动化 | 自动化 | 浏览器、桌面操作、Dify 工作流 |
+
+**分类是纯筛选，不动分组**——选中后仍是「置顶 / 最近使用·自动 / 最近使用·手动 / 全部·自动 / 全部·手动」五段，只是每段只剩该分类的技能。
+
+**分类表在 `src/client/categories.js`**，一张 `技能名 → 分类` 的本地映射表，只影响显示层：不动任何 `SKILL.md`，所以不会改变模型的技能路由判断。技能若自己在 frontmatter 写了 `category:` 则优先用它，表只做兜底。未分类的技能不单独成 chip，只在「全部」里出现。
+
+改完分类表**必须把它内联进 `lib/client.js`**（GUI 加载的是编译产物），跑 `node scripts/inline-categories.mjs` 即可；`node scripts/check-categories.mjs` 会拿真实技能全量自测。
 
 ## 安装
 
 ```sh
-# 方式一：GitHub 克隆 + link（推荐，无需发布 npm）
+# 方式一：Git 依赖直装（最省事）
+dsh plugin --profile web add "git+https://github.com/frzzaxszz/dsh-skill-catalog.git"
+
+# 方式二：克隆后 link（想在本地改代码时用）
 git clone https://github.com/frzzaxszz/dsh-skill-catalog.git
 dsh plugin --profile web add link:/path/to/dsh-skill-catalog
 
-# 方式二：Git 依赖直装
+# 方式三：GitHub 简写
 dsh plugin --profile web add "github:frzzaxszz/dsh-skill-catalog"
-
-# 方式三：发布到 npm 后（预构建安装，体验最佳）
-# ⚠️ 用具体版本号安装（minimumReleaseAge 门禁会在发布后 24h 内拦截裸名，
-#    自动落回旧版）——先查最新版本再指定安装：
-npm view dsh-skill-catalog version   # 例如 0.5.4
-dsh plugin --profile web add dsh-skill-catalog@0.5.4
 ```
 
-> 注：已发布 npm（`npm view dsh-skill-catalog` 可见 0.3.2），方式三可直接安装；未发布时请用方式一或方式二。
-> 若 `dsh` 命令因 PowerShell 执行策略被拒（`File ... cannot be loaded`），用：
-> `powershell -ExecutionPolicy Bypass -Command "dsh plugin --profile web add link:C:\path\to\dsh-skill-catalog"`
+> 本 fork **不发布到 npm**，所以没有 `dsh plugin add dsh-skill-catalog@版本` 这条路——
+> 那会装到上游的同名包，功能完全不同。
 
 **网络特例（国内/HTTPS 受限时）**：
-- 方式一的 `git clone` 走 HTTPS 慢或不通时，改用 SSH：`git clone git@github.com:frzzaxszz/dsh-skill-catalog.git`
-- 方式二的 `github:` 简写强制 HTTPS clone；仅 SSH 可用时改用：
+- `git clone` 走 HTTPS 慢或不通时，改用 SSH：`git clone git@github.com:frzzaxszz/dsh-skill-catalog.git`
+- `github:` 简写强制 HTTPS clone；仅 SSH 可用时改用：
   `dsh plugin --profile web add "git+ssh://git@github.com:frzzaxszz/dsh-skill-catalog.git"`
   （或先执行 `git config --global url."git@github.com:".insteadOf "https://github.com/"` 让 pnpm 走 SSH）
-- 方式三新版本发布后 **24 小时内**裸名会被 pnpm 的 minimumReleaseAge 门禁挡到旧版（如装到 0.2.0）；急用最新请指定版本：`dsh plugin --profile web add dsh-skill-catalog@0.3.1`
 
 重启 `dsh web`（或刷新页面加载新 bundle）后生效。
+
+## 自带技能
+
+装本插件会**一并装上**它自己的维护技能，不需要另外去 `~/.agents/skills` 里手放：
+
+| 技能 | 什么时候用 |
+| --- | --- |
+| `sync-catalog-zh-descriptions` | 新装了技能、面板上还有英文备注、或新技能没落到分类 chip 里时，调它一次，**同时**补中文备注与分配分类 |
+
+这些技能放在仓库的 `plugin/bundled-skills/` 里。因为 DSH 读技能的四个根
+（`~/.agents/skills`、`$DSH_HOME/skills`、`<cwd>/.agents/skills`、`<cwd>/.dsh/skills`）
+都不包含 `node_modules`，光把文件塞进包里是没人读的——所以 host 半边在启动时向
+`skills` 服务注册了一个 provider（rank 350，源码见 `src/bundled-skills.js`），
+行为与 `dsh-mattpocock-skills-deck` 的随包技能一致。
+
+优先级：项目级技能（100/200）> 随包（350）> 你自己装在 `~/.agents/skills` 的同名副本（500）。
+如果你自己放了一份同名技能，**你那份会盖住随包的**——这是故意的，用户的选择优先。
+
 
 ## 用法
 
@@ -141,6 +173,16 @@ source.onPick = (args) => { track(args?.candidate?.name); return onPick.call(sou
 > 手动兜底（旧流程，v0.5.15 起已**不再需要**）：把官方包拷到 `profiles/web/local/dsh-client-ui-skill/`，profile package.json 加 `"@deepseek-ai/dsh-client-ui-skill": "link:…"`，`pnpm install` 后重启 DSH。仅当你的内核连 `inputTriggers` 服务都不提供时才还需要它。
 
 ## 更新日志
+
+- **v1.2.0**：**插件开始自带技能**——装插件会一并装上 `sync-catalog-zh-descriptions`。
+  **为什么需要机制上的改动**：DSH 读技能的四个根都不包含 `node_modules`，把 SKILL.md 塞进包里
+  根本没人读，所以 host 半边在启动时向 `skills` 服务注册了一个 provider（`src/bundled-skills.js`，
+  rank 350，`list`/`get` 自己读盘并解析 frontmatter），做法与 `dsh-mattpocock-skills-deck` 的
+  随包技能一致。**降级设计**：`skills` 服务不存在、或 `registerProvider` 抛错时一律返回 undefined
+  并只打一条 warn——一个技能 provider 不该让整个插件起不来。**优先级**：项目级（100/200）>
+  随包（350）> 用户自己装在 `~/.agents/skills` 的同名副本（500），后者会盖住随包这份，这是故意的。
+  **同时**：README 重写（补分类章节、技能管理表、安装口径去掉已作废的 npm 方式、修掉「两处优化」
+  等过时表述），仓库根目录新增总览 README。
 
 - **v1.1.0**：**⚡ 面板加「按分类筛选」**——搜索框下面一排分类 chips（全部 / 工程 / 排错 / 需求 / 设计 / 文档 / 调研 / 技能 / 自动化），点一个只看该分类，再点一次回到「全部」。**分类从哪来**：新增 `src/client/categories.js`，一张 `name → 分类` 的本地映射表，走的是 `zh-descriptions.js` 同一条路（只影响**显示层**、不动任何 `SKILL.md`、插件升级不丢），所以不改变模型的技能路由判断；技能若自己在 frontmatter 写了 `category:` 则优先用它（host 磁盘扫描顺带把它带出来），表只做兜底。**几个刻意的取舍**：① 分类是**纯筛选，不动分组**——选中后仍是「置顶 / 最近使用·自动 / 最近使用·手动 / 全部·自动 / 全部·手动」五段，只是每段只剩该分类的技能（用户要的是「**进一步**筛选」，不是替换视图）；② **单选不是多选**（真要多选时搜索框更好用），chips **换行成两行而不横向滚动**（隐藏的横向滚动没人会发现）；③ 分类**不记忆**（每次打开回「全部」——记住了反而让人以为技能丢了），**已关闭视图不显示 chips 也不受其影响**，官方 `/` 菜单**完全不掺分类**（打字即用的模糊匹配，加分类只会破坏手感）；④ 未分类的技能不单独成一个 chip，只在「全部」里出现；空分类不出 chip（点进去必然空白的按钮比没有更糟）。**实现上的一次手工活**：安装包里 `build.mjs` 被裁掉、esbuild 没装，没法重新打包，所以 `categories.js` 的代码是**内联进 `lib/client.js`** 的（和 `zh-descriptions.js` 同样待遇），脚本 `scripts/inline-categories.mjs` 幂等可重跑；`scripts/check-categories.mjs` 拿宿主的真实技能全量做自测（**66 个技能全部分到类、8 个 chip 无一为空、无未分类、无重复键**）。**顺带**：`sync-catalog-zh-descriptions` 技能同步升级，新技能接入后调一次即可**同时**补中文备注与分配分类。
 

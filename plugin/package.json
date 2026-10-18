@@ -1,7 +1,7 @@
 {
   "name": "dsh-skill-catalog",
   "description": "DSH Web GUI skill catalog (personal fork of dsh-skill-picker): a button beside the composer opens a searchable list of every installed skill with Chinese annotations; picking one inserts the official `/skill-name` gesture into the input box, so the skill loads with your message. Also covers skill disable/enable, reveal, uninstall-with-backup, pinning and shared cross-device state. Not published to npm: this fork is never overwritten by an upstream upgrade.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -64,6 +64,7 @@
   "files": [
     "lib",
     "src",
+    "bundled-skills",
     "cordis.patch.yml",
     "README.md"
   ],

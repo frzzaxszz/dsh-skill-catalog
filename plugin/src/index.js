@@ -23,6 +23,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 import { isDirectoryEntry } from './dir-entry.js'
+import { registerBundledSkills } from './bundled-skills.js'
 import { dshHome, healUiSkillPatches, revertUiSkillPatches } from './patch-ui-skill.js'
 import {
   CLIENT_HEADER,
@@ -591,4 +592,22 @@ export function apply(ctx) {
     })
     return () => {}
   }, 'dsh-skill-catalog: ui-skill self-heal patch')
+
+  // Ship our own skills with the package. `bundled-skills/` lives inside the
+  // plugin directory, which none of DSH's four skill roots scan — without a
+  // provider those files would be dead weight that nobody can load, and a fresh
+  // install would give the user a skill panel but none of the skills that keep
+  // it healthy (see ./bundled-skills.js).
+  ctx.effect(() => {
+    const dispose = registerBundledSkills(ctx)
+    return () => {
+      if (dispose !== undefined) {
+        try {
+          dispose()
+        } catch {
+          /* the kernel may already be tearing down */
+        }
+      }
+    }
+  }, 'dsh-skill-catalog: bundled skills')
 }
