@@ -78,24 +78,28 @@
 ## 安装
 
 ```sh
-# 方式一：Git 依赖直装（最省事）
-dsh plugin --profile web add "git+https://github.com/frzzaxszz/dsh-skill-catalog.git"
+# 方式一：Git 依赖直装（推荐）
+dsh plugin --profile web add "git+https://github.com/frzzaxszz/dsh-skill-catalog.git#path:/plugin"
 
 # 方式二：克隆后 link（想在本地改代码时用）
 git clone https://github.com/frzzaxszz/dsh-skill-catalog.git
-dsh plugin --profile web add link:/path/to/dsh-skill-catalog
+dsh plugin --profile web add link:/path/to/dsh-skill-catalog/plugin
 
 # 方式三：GitHub 简写
-dsh plugin --profile web add "github:frzzaxszz/dsh-skill-catalog"
+dsh plugin --profile web add "github:frzzaxszz/dsh-skill-catalog#path:/plugin"
 ```
+
+> ⚠️ **`#path:/plugin` 不能省**（local link 则是 `/plugin` 结尾）。这个仓库把 `package.json`
+> 与 `cordis.patch.yml` 放在 `plugin/` 子目录，根目录只放仓库说明。少了这一段，pnpm 在仓库根
+> 找不到 `package.json`，安装直接失败。
 
 > 本 fork **不发布到 npm**，所以没有 `dsh plugin add dsh-skill-catalog@版本` 这条路——
 > 那会装到上游的同名包，功能完全不同。
 
 **网络特例（国内/HTTPS 受限时）**：
 - `git clone` 走 HTTPS 慢或不通时，改用 SSH：`git clone git@github.com:frzzaxszz/dsh-skill-catalog.git`
-- `github:` 简写强制 HTTPS clone；仅 SSH 可用时改用：
-  `dsh plugin --profile web add "git+ssh://git@github.com:frzzaxszz/dsh-skill-catalog.git"`
+- `github:` 简写强制 HTTPS clone；仅 SSH 可用时改用（同样要带 `#path:/plugin`）：
+  `dsh plugin --profile web add "git+ssh://git@github.com/frzzaxszz/dsh-skill-catalog.git#path:/plugin"`
   （或先执行 `git config --global url."git@github.com:".insteadOf "https://github.com/"` 让 pnpm 走 SSH）
 
 重启 `dsh web`（或刷新页面加载新 bundle）后生效。

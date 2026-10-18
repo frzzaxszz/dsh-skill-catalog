@@ -31,19 +31,23 @@ DSH 官方内置了 `/` 技能补全，但它是**记忆驱动**的：你得先�
 本插件**不发布到 npm**，从 GitHub 装：
 
 ```sh
-dsh plugin --profile web add "git+https://github.com/frzzaxszz/dsh-skill-catalog.git"
+dsh plugin --profile web add "git+https://github.com/frzzaxszz/dsh-skill-catalog.git#path:/plugin"
 ```
+
+> ⚠️ **`#path:/plugin` 不能省。** 这个仓库是「插件在子目录」的布局：根目录放仓库说明，
+> 真正的 `package.json` 与 `cordis.patch.yml` 在 `plugin/` 里。少了这一段，pnpm 在仓库
+> 根找不到 `package.json`，安装会失败。
 
 固定到某个 commit：
 
 ```sh
-dsh plugin --profile web add "git+https://github.com/frzzaxszz/dsh-skill-catalog.git#<commit-sha>"
+dsh plugin --profile web add "git+https://github.com/frzzaxszz/dsh-skill-catalog.git#path:/plugin&commit=<sha>"
 ```
 
 重启 `dsh web`（或刷新页面）即生效。
 
-> 国内 HTTPS 受限时改用 SSH：
-> `dsh plugin --profile web add "git+ssh://git@github.com:frzzaxszz/dsh-skill-catalog.git"`
+> 国内 HTTPS 受限时改用 SSH（同样要带 `#path:/plugin`）：
+> `dsh plugin --profile web add "git+ssh://git@github.com/frzzaxszz/dsh-skill-catalog.git#path:/plugin"`
 > 或先执行 `git config --global url."git@github.com:".insteadOf "https://github.com/"`
 
 ## 自带技能

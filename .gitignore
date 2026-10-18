@@ -21,3 +21,6 @@ node_modules/
 # 编译产物备份与内联中间件：本地回退/构建用，不进仓库
 *.bak-*
 *.inline.js
+
+# 上架 awesome-dsh-plugin 的提交素材（正式 PR 时单独用）
+.awesome-plugin-entry.yml
