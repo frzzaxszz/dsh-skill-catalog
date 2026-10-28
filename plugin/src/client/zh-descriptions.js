@@ -51,8 +51,12 @@ export const ZH_DESCRIPTIONS = {
   // ── bundled：诊断 / 浏览器 / Office / Univer ───────────────────────
   'diagnose-windows-sandbox-acl': 'Windows 上遇到意料之外的 DSH 沙箱拒绝时使用：工作区写入或列目录失败、或一个本来可读的路径读不了。内置命令会检查该路径及其每一级上级，并在同一次运行中修复它证明存在的 ACL 问题。属于预期内的隔离拒绝则不需要修 ACL。',
   'browser-skill': '通过插件注入的 bsk_* 工具自动化操作用户已登录的 Chromium。用来读页面、填表单、操作标签页、检查页面活动、调试网站或测试 UI。',
+  'office': 'Office 文档总入口：创建、编辑、检视或转换 Word / Excel / PPT 与 PDF。先加载它来挑对应的工作流。',
   'office-docx': '创建、读取、编辑并检查 Word 文档（.docx），含报告、信函与带格式的表格。DOCX 作为输入或交付物时使用。运行 Office 命令前先加载本技能。除用户明确 opt out，否则只用自带的 LibreOffice，不要去找别的 LibreOffice 可执行文件。',
+  'office-export-pdf': '用 LibreOffice Kit 把 Office 文档转成指定的 PDF。',
   'office-pptx': '创建、读取、编辑并检查 PowerPoint 演示文稿（.pptx），含幻灯片文字、表格、图片与图表。PPTX 作为输入或交付物时使用。运行 Office 命令前先加载本技能。除用户明确 opt out，否则只用自带的 LibreOffice，不要去找别的 LibreOffice 可执行文件。',
+  'office-recalculate': '用 LibreOffice Kit 刷新表格的公式缓存并校验计算值。',
+  'office-render': '用 LibreOffice Kit 把指定文档渲染成图片，或检视版面布局。',
   'office-xlsx': '读取、创建并修改 Excel 工作簿（.xlsx），含数据、公式、格式与 pandas 分析。Excel 作为输入或交付物时使用。数据与公式类任务跳过视觉检查，只有涉及格式或排版才看。除用户明确 opt out，否则只用自带的 LibreOffice。',
   'univer': '通过 DSH 工具与隔离 worktree 创建、检视、编辑、导入、导出并交接多 Unit 的 .univer 文件。任何涉及 .univer 文件、表格或 .xlsx/.csv/.tsv 数据、演示文稿或 .pptx 幻灯片、.docx 文档、Base 数据库、Board 画布、跨 Unit 内容、或需要精确编写 Univer Facade API 的任务都应主动使用；加载对应的 Unit 技能前先加载本技能。',
   'univer-base': '通过 DSH 工具与 Lite 界面创建、编辑、计算、检视、导出并评审 Univer Base 数据库 Unit。任何 Base 表、字段、记录、视图、公式字段、结构化引用、Sheet 外部引用、Base 导入导出，或 Base Unit 任务都应主动使用。',

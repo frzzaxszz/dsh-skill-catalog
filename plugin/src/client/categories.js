@@ -96,9 +96,13 @@ export const CATEGORY_MAP = {
   'oil-tone': '设计',
 
   // ── 文档：Office 与 Univer 两套，产出的是文件 ─────────────────────
+  office: '文档',
   'office-docx': '文档',
+  'office-export-pdf': '文档',
   'office-xlsx': '文档',
   'office-pptx': '文档',
+  'office-recalculate': '文档',
+  'office-render': '文档',
   univer: '文档',
   'univer-base': '文档',
   'univer-board': '文档',
