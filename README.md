@@ -103,9 +103,6 @@ backup/          ← 本地回滚件（不进仓库）
 > 改代码必须同步到 profile 的 `local-plugins/` 与 `node_modules/` 两处，否则下次
 > `pnpm install` 会把改动冲掉。
 
-## 贡献
-
-Issue 与 PR 都欢迎。发现 Bug 请附上：DSH 版本、操作系统、在哪个面板看到的（本机输入框旁有**两个** ⚡，左边是 `dsh-skill-market`，右边才是本插件）、以及控制台的 `[dsh-skill-catalog]` 日志。
 
 ## License
 
