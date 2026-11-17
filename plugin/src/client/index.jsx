@@ -24,9 +24,17 @@ import { SHARED_STATE_EVENT, pushSharedState, syncSharedState } from './shared-s
 import { installSlashFuzzy, slashEnhancementMode, warmSlashSkill } from './slash-source.js'
 import { zhDescription } from './zh-descriptions.js'
 import { CATEGORY_ALL, categoryOf, categoriesPresent } from './categories.js'
+import { createPresetManager } from './preset-manager.js'
+import { installWorkspacePresetMenu } from './workspace-menu.js'
+
+/**
+ * 任务级技能预设的编辑界面，挂在 ⚡ 面板的「预设」页签下。
+ * 与 ⚡ 列表共用同一份技能数据与分类表，但不碰它的任何既有渲染逻辑。
+ */
+const PresetManager = createPresetManager(React)
 
 /** Required services: slot registry, host connection (official skills API), sessions (workspace cwd fallback), input triggers (/ fuzzy source). */
-export const inject = ['slots', 'connection', 'sessions', 'inputTriggers']
+export const inject = ['slots', 'connection', 'sessions', 'inputTriggers', 'remote', 'remote.skills']
 
 /** localStorage key for the picker's per-browser usage history. */
 const USAGE_KEY = 'dsh-skill-catalog:usage'
@@ -500,6 +508,27 @@ const FONT_FAMILY = 'var(--dsw-font-family, -apple-system, BlinkMacSystemFont, "
  * honoured: `panelLeft` right-aligns the panel's edge to the button's edge, so
  * it opens over the composer rather than over the transcript.
  */
+/**
+ * 「技能 / 预设」页签。任务级预设挂在第二个页签下，第一个页签保持原样不动。
+ */
+const TAB_ROW_STYLE = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '4px',
+  padding: '6px 10px 2px',
+}
+
+const tabStyle = (active) => ({
+  padding: '3px 10px',
+  borderRadius: '999px',
+  cursor: 'pointer',
+  fontSize: '12px',
+  lineHeight: '18px',
+  ...(active
+    ? { background: 'var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,0.16))', fontWeight: 600 }
+    : { opacity: 0.7 }),
+})
+
 const popoverStyle = {
   position: 'fixed',
   width: '340px',
@@ -841,6 +870,31 @@ function SkillPickerButton(props) {
    * section that is almost never used should not hold vertical space forever.
    */
   const [view, setView] = useState('all')
+  /** 'skills' = 原来的技能列表；'presets' = 任务级技能预设（见 ./preset-manager.js）。 */
+  const [mode, setMode] = useState('skills')
+  /** 「显示全部」：不带 sessionId 查询，绕过本任务预设的收窄。默认关。 */
+  const [showAll, setShowAll] = useState(false)
+  /**
+   * 官方技能接口失败、退回本地扫描时置真。
+   *
+   * 从前这里只在 console 写一行 warn，结果是「技能怎么突然少了」完全没法自查
+   * —— 2026-11-15 就是这么踩坑的（面板退回扫盘只剩 11 个，看起来像插件坏了）。
+   * 现在面板上明说，并带原因和重试。
+   */
+  const [degraded, setDegraded] = useState('')
+
+  /**
+   * 切换「显示全部」。故意不去调官方接口：带 sessionId 的视图已被本任务预设
+   * 收窄，空请求又过不了 wire 校验。直接重新走一遍 load（all=true → 本地扫描）。
+   */
+  const toggleShowAll = () => {
+    const next = !showAll
+    setShowAll(next)
+    setSkills(undefined)
+    setError(undefined)
+    setDegraded('')
+    void load(true, next)
+  }
   /**
    * The active category chip, or `CATEGORY_ALL` (empty string) for no filter.
    *
@@ -933,22 +987,42 @@ function SkillPickerButton(props) {
     draftRef.current = props.input.draft
   }
 
-  const load = useCallback(async (force = false) => {
+  const load = useCallback(async (force = false, all = showAll) => {
     if (!force && (skills !== undefined || error !== undefined)) return
     // Session identity comes from the slot's standard props; older kernels
     // carried it as `props.session` (see ./session-view.js).
     const sessionId = sessionIdOf(props)
-    try {
-      // Primary path: the official host skills API (same source as DSH's own
-      // `/` completion — session-scoped, covers user + project level).
-      if (typeof props.listSkills === 'function' && sessionId !== undefined) {
-        const listed = await props.listSkills(sessionId)
-        setSkills(Array.isArray(listed) ? listed : [])
-        setSource('official')
-        return
+    let fullView = []
+    if (!all) {
+      try {
+        // Primary path: the official host skills API (same source as DSH's own
+        // `/` completion — session-scoped, covers user + project level).
+        if (typeof props.listSkills === 'function' && sessionId !== undefined) {
+          const listed = await props.listSkills(sessionId, false)
+          setSkills(Array.isArray(listed) ? listed : [])
+          setSource('official')
+          setDegraded('')
+          return
+        }
+      } catch (cause) {
+        console.warn('[dsh-skill-catalog] official skills API failed, falling back to host route:', cause)
+        setDegraded(String(cause?.message ?? cause))
       }
-    } catch (cause) {
-      console.warn('[dsh-skill-catalog] official skills API failed, falling back to host route:', cause)
+    } else {
+      // 「显示全部」= 官方接口当前视图 ∪ 本地扫描。
+      //
+      // 为什么要并集：官方那条请求必须带 sessionId，带了的视图会被本任务预设的
+      // 影子收窄；而不带 sessionId 的空请求过不了 wire 校验。本地扫描则结构上
+      // 拿不到插件随包 / bundled 的技能（univer-*、office-* 都不是磁盘文件）。
+      // 单独用任何一个都会「显示全部反而更少」，并集才两头都不丢。
+      setDegraded('')
+      try {
+        if (typeof props.listSkills === 'function' && sessionId !== undefined) {
+          fullView = (await props.listSkills(sessionId, false)) ?? []
+        }
+      } catch {
+        /* 官方接口不可用时，至少还有本地扫描那一半 */
+      }
     }
     // Fallback path: the host's own scan route (official provider roots).
     try {
@@ -977,12 +1051,18 @@ function SkillPickerButton(props) {
       const registry = await fetchRegistrySkills(cwd)
       const diskNames = new Set(disk.map((skill) => skill.name))
       const extra = registry.filter((skill) => !diskNames.has(skill.name))
-      setSkills(disk.concat(extra))
+      const scanned = disk.concat(extra)
+      if (all && fullView.length > 0) {
+        const have = new Set(fullView.map((skill) => skill.name))
+        setSkills(fullView.concat(scanned.filter((skill) => !have.has(skill.name))))
+      } else {
+        setSkills(scanned)
+      }
       setSource('host')
     } catch (cause) {
       setError(String(cause?.message ?? cause))
     }
-  }, [skills, error, props.listSkills, props.sessionId, props.session, props.cwd])
+  }, [skills, error, props.listSkills, props.sessionId, props.session, props.cwd, showAll])
 
   /**
    * Load the disabled skills from the host's own scan.
@@ -1306,6 +1386,54 @@ function SkillPickerButton(props) {
             ...(panelLeft === undefined ? { right: '24px' } : { left: `${panelLeft}px` }),
           }}
         >
+          <div style={TAB_ROW_STYLE}>
+            <span
+              role="button"
+              tabIndex={-1}
+              onClick={() => setMode('skills')}
+              style={tabStyle(mode === 'skills')}
+            >
+              技能
+            </span>
+            <span
+              role="button"
+              tabIndex={-1}
+              onClick={() => setMode('presets')}
+              style={tabStyle(mode === 'presets')}
+            >
+              预设
+            </span>
+            {mode === 'skills' && (
+              <span
+                title={showAll ? '全部技能（本地扫描，含被本任务预设排除的）' : '本任务可用的技能'}
+                style={{
+                  marginLeft: 'auto',
+                  fontSize: '12px',
+                  lineHeight: '18px',
+                  opacity: 0.62,
+                  whiteSpace: 'nowrap',
+                  cursor: 'default',
+                }}
+              >
+                {`${skills?.length ?? 0} 个`}
+              </span>
+            )}
+            {mode === 'skills' && (
+              <span
+                role="button"
+                tabIndex={-1}
+                title="显示全部技能，包括被本任务预设排除的"
+                onClick={() => toggleShowAll()}
+                style={tabStyle(showAll)}
+              >
+                显示全部
+              </span>
+            )}
+          </div>
+          {mode === 'presets' ? (
+            <PresetManager cwd={props.cwd} skills={skills ?? []} categoryOf={categoryOf} />
+          ) : (
+            <>
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -1316,6 +1444,33 @@ function SkillPickerButton(props) {
             style={{ ...searchStyle, ...(searchFocus ? searchFocusStyle : {}) }}
             autoFocus
           />
+          {degraded !== '' && (
+            <div style={{ ...statusStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ flex: '1', minWidth: '0' }}>
+                {`官方技能接口不可用，当前显示本地扫描结果（${skills?.length ?? 0} 个）：${degraded}`}
+              </span>
+              <span
+                role="button"
+                tabIndex={-1}
+                onClick={() => {
+                  setSkills(undefined)
+                  setError(undefined)
+                  setDegraded('')
+                  void load(true)
+                }}
+                style={{
+                  flex: 'none',
+                  padding: '2px 8px',
+                  borderRadius: '999px',
+                  border: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.35))',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                重试
+              </span>
+            </div>
+          )}
           {error !== undefined ? (
             <div style={statusStyle}>{`加载失败：${error}`}</div>
           ) : skills === undefined ? (
@@ -1619,6 +1774,7 @@ function SkillPickerButton(props) {
               )}
             </>
           )}
+          </>)}
         </div>
       )}
     </div>
@@ -1636,16 +1792,47 @@ export function apply(ctx) {
   // Primary skill source: the official host skills API. In DSH 0.1.2-alpha.x
   // the RPC moved from `connection.api.skills` (rc.x) to `remote.skills`
   // (used by the official ui-skill plugin); try both before falling back.
-  const listSkills = async (sessionId) => {
-    const remoteSkills = ctx.remote?.skills
-    const connectionSkills = ctx.connection?.api?.skills
-    const skills = remoteSkills ?? connectionSkills
+  //
+  // ⚠️ 取远端 API 必须走 `ctx.get('remote')`，**不能**写 `ctx.remote`。
+  // Cordis 对「没在 inject 里声明过的服务」做属性访问会**直接抛错**
+  // （`cannot get property "remote" without inject`），一旦抛在 listSkills 的
+  // 第一行，整段就 reject —— 面板于是静默回退到本地扫描，只剩 4 个根里的十来个
+  // 技能（DSH 自带的 univer / office 全家都看不见）。这个写法从 1.2.0 就存在。
+  const remoteSkillApi = () => {
+    // 首选属性访问：`remote` / `remote.skills` 已经写进 inject（与官方 ui-skill
+    // 完全一致），所以这一句是合法的，拿到的是带作用域追踪的服务实例。
+    try {
+      if (ctx.remote?.skills !== undefined) return ctx.remote.skills
+    } catch {
+      /* 老内核没有 remote */
+    }
+    // 兜底：ctx.get 不走 inject 校验。
+    try {
+      const viaGet = typeof ctx.get === 'function' ? ctx.get('remote') : undefined
+      if (viaGet?.skills !== undefined) return viaGet.skills
+    } catch {
+      /* 同上 */
+    }
+    return undefined
+  }
+
+  /**
+   * @param sessionId - 会话身份；决定看到的是「本任务可用的」那一套。
+   * @param all - true 时**不带** sessionId 查询：宿主会退回 preset 作用域，
+   *   因此拿到的是不受本任务预设收窄的视图（「显示全部」用）。
+   */
+  const listSkills = async (sessionId, all = false) => {
+    const skills = remoteSkillApi() ?? ctx.connection?.api?.skills
     if (skills === undefined || typeof skills.list !== 'function') {
       throw new Error('skills RPC unavailable (remote.skills / connection.api.skills)')
     }
     const controller = new AbortController()
-    const { result } = await skills.list({ sessionId }, controller.signal)
-    if (!result.ok) throw new Error(`skill.list failed: ${result.error?.code}: ${result.error?.message}`)
+    // 返回形状有两代：新内核（`remote.skills`，官方 ui-skill 就是这么用的）直接给
+    // `{ ok, value }`；老内核（`connection.api.skills`）外面还套一层 `result`。
+    // 只认一种就会炸成 `Cannot read properties of undefined (reading 'ok')`。
+    const response = await skills.list(all ? {} : { sessionId }, controller.signal)
+    const result = response?.result ?? response
+    if (result?.ok !== true) throw new Error(`skill.list failed: ${result?.error?.code}: ${result?.error?.message}`)
     const raw = result.value?.skills ?? []
     // The host already filters user-invocable skills out of this payload; keep
     // the guard here too so the panel can never offer a skill the official `/`
@@ -1710,6 +1897,10 @@ export function apply(ctx) {
       unsubscribeLegacyCwd()
     }
   }, 'dsh-skill-catalog: composer input slot')
+
+  // 任务行「…」菜单里的「技能预设」子菜单（见 ./workspace-menu.js）。
+  // 独立于 ⚡ 按钮：没有 contextMenus 的内核上只是少一个菜单项，不影响面板。
+  ctx.effect(() => installWorkspacePresetMenu(ctx), 'dsh-skill-catalog: workspace preset menu')
 
   // Fuzzy `/` completion.
   //

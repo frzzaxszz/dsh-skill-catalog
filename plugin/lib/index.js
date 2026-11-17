@@ -2,6 +2,7 @@
 import { mkdir as mkdir2, readFile as readFile3, readdir as readdir3, rename as rename3, writeFile as writeFile3 } from "node:fs/promises";
 import os2 from "node:os";
 import path4 from "node:path";
+import { bindPreset, deletePreset, presetIdForCwd, readPresets, savePreset, syncAgentSkills } from "./presets.js";
 
 // src/dir-entry.js
 import { stat } from "node:fs/promises";
@@ -386,7 +387,7 @@ function revealSkill(target, revealPath) {
 }
 
 // src/index.js
-var inject = ["webServer", "systemPrompt"];
+var inject = ["webServer", "systemPrompt", "skills"];
 var SECTION_ORDER = 215;
 var SKILL_CATALOG_GUIDANCE = "\u672C\u673A\u5DF2\u5B89\u88C5 dsh-skill-catalog \u63D2\u4EF6\uFF08Web GUI \u7684\u6280\u80FD\u9762\u677F\uFF09\uFF1A\u8F93\u5165\u6846\u65C1\u6709\u6280\u80FD\u6309\u94AE\uFF0C\u7528\u6237\u70B9\u9009\u6280\u80FD\u540E\u4F1A\u628A `/\u6280\u80FD\u540D`\uFF08\u5982 /duo-xuan-pi-gai\uFF09\u63D2\u5165\u53D1\u9001\u6846\u5E76\u968F\u6D88\u606F\u53D1\u51FA\u3002DSH \u5B98\u65B9\u673A\u5236\u4F1A\u628A\u7528\u6237\u6D88\u606F\u91CC\u7684 `/\u6280\u80FD\u540D` \u624B\u52BF\u5F53\u4F5C\u6280\u80FD\u76F4\u63A5\u8C03\u7528\u5E76\u81EA\u52A8\u52A0\u8F7D\u6280\u80FD\u5185\u5BB9\u2014\u2014\u4F60\u7167\u5E38\u6309\u52A0\u8F7D\u540E\u7684\u6280\u80FD\u6307\u4EE4\u6267\u884C\u5373\u53EF\uFF0C\u65E0\u9700\u989D\u5916\u64CD\u4F5C\u3002\u7528\u6237\u8BF4\u300C\u6280\u80FD\u9009\u62E9\u5668 / \u9009\u4E2A\u6280\u80FD / \u6280\u80FD\u5217\u8868\u300D\u65F6\u5373\u6307\u672C\u63D2\u4EF6\u3002";
 function userSkillsDir() {
@@ -630,6 +631,67 @@ function allSkillRoots(cwd) {
     roots.push(path4.join(cwd, ".agents", "skills"), path4.join(cwd, ".dsh", "skills"));
   }
   return roots;
+}
+function presetList(presets) {
+  return Object.values(presets).sort((a, b) => a.name.localeCompare(b.name, "zh-Hans-CN"));
+}
+async function handlePresets(req, res, url) {
+  const json = (code, payload) => {
+    res.writeHead(code, { "content-type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify(payload));
+  };
+  try {
+    if (req.method === "POST") {
+      if (req.headers[CLIENT_HEADER] !== "1") {
+        json(403, { ok: false, error: "missing client header" });
+        return;
+      }
+      const body = await readJsonBody(req);
+      const action = String(body?.action ?? "");
+      if (action === "save") {
+        const saved = await savePreset(body?.preset);
+        json(200, { ok: true, preset: saved.preset, presets: presetList(saved.presets), bindings: saved.bindings });
+        return;
+      }
+      if (action === "delete") {
+        const removed = await deletePreset(String(body?.id ?? ""));
+        json(200, {
+          ok: true,
+          affected: removed.affected,
+          presets: presetList(removed.presets),
+          bindings: removed.bindings
+        });
+        return;
+      }
+      if (action === "bind") {
+        if (typeof body?.cwd !== "string" || body.cwd === "") {
+          json(400, { ok: false, error: "missing cwd" });
+          return;
+        }
+        const bound = await bindPreset(body.cwd, body?.presetId === null ? null : String(body?.presetId ?? ""));
+        json(200, {
+          ok: true,
+          cwd: bound.cwd,
+          bound: bound.bound,
+          presets: presetList(bound.presets),
+          bindings: bound.bindings
+        });
+        return;
+      }
+      json(400, { ok: false, error: `unknown action: ${action}` });
+      return;
+    }
+    const doc = await readPresets();
+    const cwd = url.searchParams.get("cwd") ?? void 0;
+    json(200, {
+      ok: true,
+      presets: presetList(doc.presets),
+      bindings: doc.bindings,
+      current: cwd === void 0 ? null : await presetIdForCwd(cwd)
+    });
+  } catch (error) {
+    json(500, { ok: false, error: String(error?.message ?? error) });
+  }
 }
 async function handleSkillOp(req, res, url) {
   const json = (code, payload) => {
@@ -915,6 +977,10 @@ function apply(ctx) {
           await handleSkillOp(req, res, url);
           return;
         }
+        if (url.pathname === "/dsh-skill-catalog/presets") {
+          await handlePresets(req, res, url);
+          return;
+        }
         const cwd = url.searchParams.get("cwd") ?? void 0;
         const skills = await scanSkills(cwd);
         res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
@@ -931,6 +997,17 @@ function apply(ctx) {
     order: SECTION_ORDER,
     text: SKILL_CATALOG_GUIDANCE
   }), "dsh-skill-catalog: prompt section");
+  try {
+    ctx.on("agent/pre-step", async ({ agent, signal }, next) => {
+      try {
+        await syncAgentSkills(ctx, agent, signal);
+      } catch {
+      }
+      return next();
+    });
+  } catch (error) {
+    console.warn("[dsh-skill-catalog] task preset hook not mounted:", String(error?.message ?? error));
+  }
   ctx.effect(() => {
     const enabled = process.env.DSH_SKILL_CATALOG_FILE_PATCH === "1";
     const task = enabled ? healUiSkillPatches().then((report) => reportUiSkillPatches(report)) : revertUiSkillPatches().then((report) => {

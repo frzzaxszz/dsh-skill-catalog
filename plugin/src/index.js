@@ -36,9 +36,10 @@ import {
   setSkillDisabled,
   uninstallSkill,
 } from './skill-ops.js'
+import { bindPreset, deletePreset, presetIdForCwd, readPresets, savePreset, syncAgentSkills } from './presets.js'
 
 /** Required services: the route registry and the prompt band. */
-export const inject = ['webServer', 'systemPrompt']
+export const inject = ['webServer', 'systemPrompt', 'skills']
 
 /** Order of the announcement section within the tool-guidance band. */
 const SECTION_ORDER = 215
@@ -439,6 +440,82 @@ function allSkillRoots(cwd) {
   return roots
 }
 
+/** 预设 map → 按名字排序的数组（浏览器侧直接渲染）。 */
+function presetList(presets) {
+  return Object.values(presets).sort((a, b) => a.name.localeCompare(b.name, 'zh-Hans-CN'))
+}
+
+/**
+ * `GET /dsh-skill-catalog/presets` → `{ ok, presets, bindings }`（整库）。
+ *
+ * `POST /dsh-skill-catalog/presets` 带 `{ action }`：
+ *   - `save`  ：`{ preset: { id?, name, skills } }` —— 新建或更新；
+ *   - `delete`：`{ id }` —— 返回被解绑的任务目录 `affected`（那些任务回落到默认预设）；
+ *   - `bind`  ：`{ cwd, presetId }` —— `presetId: null` 即解绑。
+ *
+ * 写路径带同一个 CSRF 头守卫：插件路由在 web server 的鉴权之外，跨站 `fetch`
+ * 无法在不触发预检的前提下自定义请求头。
+ */
+async function handlePresets(req, res, url) {
+  const json = (code, payload) => {
+    res.writeHead(code, { 'content-type': 'application/json; charset=utf-8' })
+    res.end(JSON.stringify(payload))
+  }
+  try {
+    if (req.method === 'POST') {
+      if (req.headers[CLIENT_HEADER] !== '1') {
+        json(403, { ok: false, error: 'missing client header' })
+        return
+      }
+      const body = await readJsonBody(req)
+      const action = String(body?.action ?? '')
+
+      if (action === 'save') {
+        const saved = await savePreset(body?.preset)
+        json(200, { ok: true, preset: saved.preset, presets: presetList(saved.presets), bindings: saved.bindings })
+        return
+      }
+      if (action === 'delete') {
+        const removed = await deletePreset(String(body?.id ?? ''))
+        json(200, {
+          ok: true,
+          affected: removed.affected,
+          presets: presetList(removed.presets),
+          bindings: removed.bindings,
+        })
+        return
+      }
+      if (action === 'bind') {
+        if (typeof body?.cwd !== 'string' || body.cwd === '') {
+          json(400, { ok: false, error: 'missing cwd' })
+          return
+        }
+        const bound = await bindPreset(body.cwd, body?.presetId === null ? null : String(body?.presetId ?? ''))
+        json(200, {
+          ok: true,
+          cwd: bound.cwd,
+          bound: bound.bound,
+          presets: presetList(bound.presets),
+          bindings: bound.bindings,
+        })
+        return
+      }
+      json(400, { ok: false, error: `unknown action: ${action}` })
+      return
+    }
+    const doc = await readPresets()
+    const cwd = url.searchParams.get('cwd') ?? undefined
+    json(200, {
+      ok: true,
+      presets: presetList(doc.presets),
+      bindings: doc.bindings,
+      current: cwd === undefined ? null : await presetIdForCwd(cwd),
+    })
+  } catch (error) {
+    json(500, { ok: false, error: String(error?.message ?? error) })
+  }
+}
+
 /**
  * `POST /dsh-skill-catalog/skill` — disable / enable / reveal / uninstall /
  * restore a skill, and list the uninstall backups.
@@ -543,6 +620,10 @@ export function apply(ctx) {
           await handleSkillOp(req, res, url)
           return
         }
+        if (url.pathname === '/dsh-skill-catalog/presets') {
+          await handlePresets(req, res)
+          return
+        }
         // cwd query carries the active session's workspace root from the client.
         const cwd = url.searchParams.get('cwd') ?? undefined
         const skills = await scanSkills(cwd)
@@ -561,6 +642,34 @@ export function apply(ctx) {
     order: SECTION_ORDER,
     text: SKILL_CATALOG_GUIDANCE,
   }), 'dsh-skill-catalog: prompt section')
+
+  // 任务级技能预设（见 presets.js）。
+  //
+  // 在 `next()` **之前**跑，好让影子赶在同一步里官方 tool-skill 渲染目录之前落下；
+  // 万一这个监听器排在链更后面，注册表的 `skills/change` 会追加一份替换目录，
+  // 过期的名字活不过这一步。
+  //
+  // 挂在 host 上下文上的监听器能收到每个 agent 的事件（事件沿作用域链向上流），
+  // 所以一个钩子就覆盖了所有任务下的所有会话。
+  //
+  // ⚠️ 直接 `ctx.on(...)`，**不要**套 `ctx.effect`：官方 action-cards / agent-instructions
+  // 都是这个写法。监听器注册自身就是一个 fiber effect，再包一层会让插件 fiber 卡在
+  // loading（表现为启动审计报 `dsh-skill-catalog: loading`，整个 web boot 失败）。
+  // `ctx.on` 的 disposer 已随 fiber 自动释放，不需要额外的 effect 包裹。
+  try {
+    ctx.on('agent/pre-step', async ({ agent, signal }, next) => {
+      try {
+        await syncAgentSkills(ctx, agent, signal)
+      } catch {
+        /* syncAgentSkills never throws; this is belt and braces for the loop */
+      }
+      return next()
+    })
+  } catch (error) {
+    // 内核不再暴露这个事件时，不能把插件的加载也带停 —— 面板、路由、`/` 接管
+    // 都还能用。
+    console.warn('[dsh-skill-catalog] task preset hook not mounted:', String(error?.message ?? error))
+  }
 
   // The `/` enhancement no longer edits official files.
   //

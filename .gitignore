@@ -12,6 +12,7 @@ node_modules/
 # 诊断/取证产物：从 app.asar 提取的包、截图、临时脚本。
 # 都是排查时的一次性副产物，不该进版本库（2026-10-18 修右侧栏 bug 时留下过 79 个）。
 .tmp-*
+.tmp/
 .diag-*
 .diag/
 .out-*
@@ -21,6 +22,9 @@ node_modules/
 # 编译产物备份与内联中间件：本地回退/构建用，不进仓库
 *.bak-*
 *.inline.js
+
+# 调试用的 bundle 副本（曾出现 759KB 的 lib/_probe_bundle.cjs）
+lib/_probe_*
 
 # 上架 awesome-dsh-plugin 的提交素材（正式 PR 时单独用）
 .awesome-plugin-entry.yml

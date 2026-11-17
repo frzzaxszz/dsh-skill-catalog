@@ -26115,7 +26115,7 @@ function installSlashFuzzy(inputTriggers, hooks = {}, options = {}) {
 
 // src/client/index.jsx
 var import_jsx_runtime = require("react/jsx-runtime");
-var inject = ["slots", "connection", "sessions", "inputTriggers"];
+var inject = ["slots", "connection", "sessions", "inputTriggers", "remote", "remote.skills"];
 var USAGE_KEY2 = "dsh-skill-catalog:usage";
 var PINNED_KEY2 = "dsh-skill-catalog:pinned";
 function loadPinned() {
@@ -26302,6 +26302,8 @@ const ZH_DESCRIPTIONS = {
   // ── bundled：诊断 / 浏览器 / Office / Univer ───────────────────────
   'diagnose-windows-sandbox-acl': 'Windows 上遇到意料之外的 DSH 沙箱拒绝时使用：工作区写入或列目录失败、或一个本来可读的路径读不了。内置命令会检查该路径及其每一级上级，并在同一次运行中修复它证明存在的 ACL 问题。属于预期内的隔离拒绝则不需要修 ACL。',
   'browser-skill': '通过插件注入的 bsk_* 工具自动化操作用户已登录的 Chromium。用来读页面、填表单、操作标签页、检查页面活动、调试网站或测试 UI。',
+  'dsh-builtin-browser': 'DSH 内置浏览器：任务需要真实网页时用它——打开 URL、读取或抽取内容、填表并提交、上传附件、确认某个结果是否真的发生了、或页面/载体失效后恢复。讲清该挑哪个 dsh_browser_* 工具、怎么批量执行多步、以及怎么验证而不是靠猜。',
+  'modlens': '给纯文本模型补视觉能力：对话里出现图片路径或图片占位符（[Image #1]、[Unsupported Image]）而你看不到图片内容时，先用它把图片转成结构化文字证据——逐词转写、版面区域、语义、视觉线索，不要自己造 OCR 或用 PIL/tesseract。能直接看到图片就不要用。也用于询问 modlens 的安装、配置或切换视觉服务商。',
   'office': 'Office 文档总入口：创建、编辑、检视或转换 Word / Excel / PPT 与 PDF。先加载它来挑对应的工作流。',
   'office-docx': '创建、读取、编辑并检查 Word 文档（.docx），含报告、信函与带格式的表格。DOCX 作为输入或交付物时使用。运行 Office 命令前先加载本技能。除用户明确 opt out，否则只用自带的 LibreOffice，不要去找别的 LibreOffice 可执行文件。',
   'office-export-pdf': '用 LibreOffice Kit 把 Office 文档转成指定的 PDF。',
@@ -26317,6 +26319,7 @@ const ZH_DESCRIPTIONS = {
   'univer-embed': '通过 DSH 工具与 Lite 界面把一个 Univer Unit 嵌进另一个 Unit。当 Sheet、Doc、Slide、Base、Board、仪表盘、报告、演示文稿、数据库或画布需要展示或交互同一 .univer 文件里另一个 Unit 的内容时使用。',
   'univer-sheet': '通过 DSH 工具与 Lite 界面读取、写入、格式化、计算并验证 Univer Sheet Unit。任何表格值、公式、区域、表格、图表、图片、数据验证、筛选、透视、富文本、xlsx/csv/tsv 导入导出，或 Sheet Unit 任务都应主动使用。',
   'univer-slide': '通过 DSH 工具与 Lite 界面创建、重设计、编辑、检视、lint、导出并评审 Univer Slide Unit。任何交付物是演示文稿的任务都应主动使用；生成的页面应用 univer_compile_svg，每个改过的页面都应跑 univer_lint。',
+  'archify': '把系统架构、工作流、时序、数据流、生命周期/状态、ERD、类图、树、时间线、瀑布图做成可探索的独立 HTML 图表，带深/浅主题、动效与图片/SVG/WebM 导出。接受自然语言需求或 Mermaid 输入；需要反映真实代码时会去查仓库证据。用于可视化系统、API 调用、流水线、数据表结构、历史、耗时或日常步骤。也可把一段回答做成一页解释页（结论先行、分栏、内嵌图表）。不用于仪表盘。',
 
   // ── custom：superpowers 工作流技能 ─────────────────────────────────
   'brainstorming': '任何创作性工作之前必须使用——新建功能、构建组件、添加能力或修改行为。在动手之前先把用户意图、需求与设计探清楚。',
@@ -26464,6 +26467,9 @@ const CATEGORY_MAP = {
   'oil-ui': '设计',
   'motion-web': '设计',
   'oil-tone': '设计',
+  // 产出可探索的 HTML 图表（架构图 / 时序图 / 数据流）—— 交付物是视觉的，
+  // 所以归这里而不是「调研」：调研产出的是文字，它产出的是图。
+  'archify': '设计',
 
   // ── 文档：Office 与 Univer 两套，产出的是文件 ─────────────────────
   office: '文档',
@@ -26491,6 +26497,8 @@ const CATEGORY_MAP = {
   'obsidian-curator': '调研',
   pr: '调研',
   retro: '调研',
+  // 它的用途是「把图片读成文字证据」——属于取信息，不产出代码也不改系统。
+  'modlens': '调研',
 
   // ── 技能：管这套技能本身 ──────────────────────────────────────────
   'writing-skills': '技能',
@@ -26503,6 +26511,8 @@ const CATEGORY_MAP = {
   // ── 自动化：对外部世界动手 ────────────────────────────────────────
   'browser-skill': '自动化',
   'agent-browser': '自动化',
+  // DSH 内置的 dsh_browser_* 工具就是同一件事的官方版本。
+  'dsh-builtin-browser': '自动化',
   'dify-workflow': '自动化',
   'dify-deploy': '自动化',
   wizard: '自动化',
@@ -26723,6 +26733,21 @@ var FONT_FAMILY = 'var(--dsw-font-family, -apple-system, BlinkMacSystemFont, "Se
  * honoured: `panelLeft` right-aligns the panel's edge to the button's edge, so
  * it opens over the composer rather than over the transcript.
  */
+/** 「技能 / 预设」页签的样式（任务级预设挂在第二个页签下）。 */
+var TAB_ROW_STYLE = {
+  display: "flex",
+  alignItems: "center",
+  gap: "4px",
+  padding: "6px 10px 2px"
+};
+var tabStyle = (active) => ({
+  padding: "3px 10px",
+  borderRadius: "999px",
+  cursor: "pointer",
+  fontSize: "12px",
+  lineHeight: "18px",
+  ...active ? { background: "var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,0.16))", fontWeight: 600 } : { opacity: 0.7 }
+});
 var popoverStyle = {
   position: "fixed",
   width: "340px",
@@ -26937,6 +26962,18 @@ function SkillPickerButton(props) {
   }, [notice]);
   const [menu, setMenu] = (0, import_react.useState)(void 0);
   const [view, setView] = (0, import_react.useState)("all");
+  /** "skills" = 原来的技能列表；"presets" = 任务级技能预设。 */
+  const [mode, setMode] = (0, import_react.useState)("skills");
+  const [showAll, setShowAll] = (0, import_react.useState)(false);
+  const [degraded, setDegraded] = (0, import_react.useState)("");
+  const toggleShowAll = () => {
+    const next = !showAll;
+    setShowAll(next);
+    setSkills(void 0);
+    setError(void 0);
+    setDegraded("");
+    void load(true, next);
+  };
   const [category, setCategory] = (0, import_react.useState)(CATEGORY_ALL);
   const [searchFocus, setSearchFocus] = (0, import_react.useState)(false);
   const [query, setQuery] = (0, import_react.useState)("");
@@ -26986,18 +27023,37 @@ function SkillPickerButton(props) {
   } else if (props.input !== void 0 && typeof props.input.draft === "string") {
     draftRef.current = props.input.draft;
   }
-  const load = (0, import_react.useCallback)(async (force = false) => {
+  const load = (0, import_react.useCallback)(async (force = false, all = showAll) => {
     if (!force && (skills !== void 0 || error !== void 0)) return;
     const sessionId = sessionIdOf(props);
-    try {
-      if (typeof props.listSkills === "function" && sessionId !== void 0) {
-        const listed = await props.listSkills(sessionId);
-        setSkills(Array.isArray(listed) ? listed : []);
-        setSource("official");
-        return;
+    let fullView = [];
+    if (!all) {
+      try {
+        if (typeof props.listSkills === "function" && sessionId !== void 0) {
+          const listed = await props.listSkills(sessionId, false);
+          setSkills(Array.isArray(listed) ? listed : []);
+          setSource("official");
+          setDegraded("");
+          return;
+        }
+      } catch (cause) {
+        console.warn("[dsh-skill-catalog] official skills API failed, falling back to host route:", cause);
+        setDegraded(String(cause?.message ?? cause));
       }
-    } catch (cause) {
-      console.warn("[dsh-skill-catalog] official skills API failed, falling back to host route:", cause);
+    } else {
+      // 「显示全部」= 官方接口当前视图 ∪ 本地扫描。
+      //
+      // 为什么要并集：官方那条请求必须带 sessionId，带了的视图会被本任务预设的
+      // 影子收窄；而不带 sessionId 的空请求过不了 wire 校验。本地扫描则结构上
+      // 拿不到插件随包/bundled 的技能（univer-*、office-* 都不是磁盘文件）。
+      // 单独用任何一个都会「显示全部反而更少」，并集才两头都不丢。
+      setDegraded("");
+      try {
+        if (typeof props.listSkills === "function" && sessionId !== void 0) {
+          fullView = (await props.listSkills(sessionId, false)) ?? [];
+        }
+      } catch {
+      }
     }
     try {
       const cwd = typeof props.cwd === "string" && props.cwd !== "" ? `?cwd=${encodeURIComponent(props.cwd)}` : "";
@@ -27018,12 +27074,18 @@ function SkillPickerButton(props) {
       const registry = await fetchRegistrySkills(cwd);
       const diskNames = new Set(disk.map((skill) => skill.name));
       const extra = registry.filter((skill) => !diskNames.has(skill.name));
-      setSkills(disk.concat(extra));
+      const scanned = disk.concat(extra);
+      if (all && fullView.length > 0) {
+        const have = new Set(fullView.map((skill) => skill.name));
+        setSkills(fullView.concat(scanned.filter((skill) => !have.has(skill.name))));
+      } else {
+        setSkills(scanned);
+      }
       setSource("host");
     } catch (cause) {
       setError(String(cause?.message ?? cause));
     }
-  }, [skills, error, props.listSkills, props.sessionId, props.session, props.cwd]);
+  }, [skills, error, props.listSkills, props.sessionId, props.session, props.cwd, showAll]);
   const loadDisabled = (0, import_react.useCallback)(async () => {
     try {
       const cwd = typeof props.cwd === "string" && props.cwd !== "" ? `?cwd=${encodeURIComponent(props.cwd)}` : "";
@@ -27230,6 +27292,17 @@ function SkillPickerButton(props) {
           ...panelLeft === void 0 ? { right: "24px" } : { left: `${panelLeft}px` }
         },
         children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: TAB_ROW_STYLE, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { role: "button", tabIndex: -1, onClick: () => setMode("skills"), style: tabStyle(mode === "skills"), children: "\u6280\u80FD" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { role: "button", tabIndex: -1, onClick: () => setMode("presets"), style: tabStyle(mode === "presets"), children: "\u9884\u8BBE" }),
+          mode === "skills" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+            title: showAll ? "\u5168\u90E8\u6280\u80FD\uFF08\u672C\u5730\u626B\u63CF\uFF0C\u542B\u88AB\u672C\u4EFB\u52A1\u9884\u8BBE\u6392\u9664\u7684\uFF09" : "\u672C\u4EFB\u52A1\u53EF\u7528\u7684\u6280\u80FD",
+            style: { marginLeft: "auto", fontSize: "12px", lineHeight: "18px", opacity: 0.62, whiteSpace: "nowrap", cursor: "default" },
+            children: `${skills?.length ?? 0} \u4E2A`
+          }),
+          mode === "skills" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { role: "button", tabIndex: -1, title: "\u663E\u793A\u5168\u90E8\u6280\u80FD\uFF0C\u5305\u62EC\u88AB\u672C\u4EFB\u52A1\u9884\u8BBE\u6392\u9664\u7684", onClick: () => toggleShowAll(), style: tabStyle(showAll), children: "\u663E\u793A\u5168\u90E8" })
+        ] }),
+        ...mode === "presets" ? [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(PresetManager, { cwd: props.cwd, skills: skills ?? [], categoryOf })] : [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
           "input",
           {
@@ -27243,6 +27316,28 @@ function SkillPickerButton(props) {
             autoFocus: true
           }
         ),
+        degraded !== "" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { ...statusStyle, display: "flex", alignItems: "center", gap: "8px" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { flex: "1", minWidth: "0" }, children: `\u5B98\u65B9\u6280\u80FD\u63A5\u53E3\u4E0D\u53EF\u7528\uFF0C\u5F53\u524D\u663E\u793A\u672C\u5730\u626B\u63CF\u7ED3\u679C\uFF08${skills?.length ?? 0} \u4E2A\uFF09\uFF1A${degraded}` }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+            role: "button",
+            tabIndex: -1,
+            onClick: () => {
+              setSkills(void 0);
+              setError(void 0);
+              setDegraded("");
+              void load(true);
+            },
+            style: {
+              flex: "none",
+              padding: "2px 8px",
+              borderRadius: "999px",
+              border: "1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.35))",
+              cursor: "pointer",
+              whiteSpace: "nowrap"
+            },
+            children: "\u91CD\u8BD5"
+          })
+        ] }),
         error !== void 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: statusStyle, children: `\u52A0\u8F7D\u5931\u8D25\uFF1A${error}` }) : skills === void 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: statusStyle, children: "\u52A0\u8F7D\u4E2D\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
           view !== "off" && categoryChips.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: chipRowStyle, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
@@ -27502,22 +27597,655 @@ function SkillPickerButton(props) {
             }
           )
         ] })
+        ]
       ] })
     ] })
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// #region src/client/preset-manager.js (inlined by scripts/inline-client-lib.mjs)
+/**
+ * dsh-skill-catalog \u2014 \u4efb\u52a1\u7ea7\u6280\u80fd\u9884\u8bbe\u7684\u7f16\u8f91\u754c\u9762\uff08\u6302\u5728 \u26a1 \u9762\u677f\u7684\u300c\u9884\u8bbe\u300d\u9875\u7b7e\u4e0b\uff09\u3002
+ *
+ * \u8bed\u4e49\uff08\u4e0e host \u4fa7 presets.js \u4e00\u81f4\uff09\uff1a
+ *
+ *   - \u4e00\u4e2a**\u4efb\u52a1**\uff08\u4fa7\u8fb9\u680f\u7684\u5de5\u4f5c\u533a\uff09\u7ed1\u4e00\u4e2a**\u9884\u8bbe**\uff1b\u4efb\u52a1\u4e0b\u6240\u6709\u4f1a\u8bdd\u5171\u7528\u5b83\u3002
+ *   - \u9884\u8bbe\u662f\u4e00\u4efd\u6280\u80fd\u540d\u5355**\u5feb\u7167**\uff1a\u521b\u5efa\u90a3\u4e00\u523b\u5b9a\u4e86\u5c31\u5b9a\u4e86\uff0c\u540e\u6765\u65b0\u88c5\u7684\u6280\u80fd\u4e0d\u4f1a\u81ea\u52a8\u8fdb\u6765\u3002
+ *   - **\u9ed8\u8ba4\uff08\u4e0d\u9650\u5236\uff09**\u4e0d\u662f\u540d\u5355\uff0c\u800c\u662f\u300c\u4ec0\u4e48\u90fd\u4e0d\u62e6\u300d\u8fd9\u4e2a\u72b6\u6001\uff1b\u6ca1\u7ed1\u9884\u8bbe\u7684\u4efb\u52a1\u90fd\u662f\u5b83\uff0c
+ *     \u6240\u4ee5\u65b0\u6280\u80fd\u5929\u7136\u53ef\u7528\u3002
+ *   - \u6539\u9884\u8bbe\u7acb\u5373\u4f20\u5bfc\uff1a\u6240\u6709\u7ed1\u5b83\u7684\u4efb\u52a1\u4e0b\u4e00\u4e2a\u6d88\u606f\u5c31\u6309\u65b0\u540d\u5355\u8d70\u3002
+ *
+ * \u4e3a\u4ec0\u4e48\u5199\u6210 createElement \u800c\u4e0d\u662f JSX\uff1a\u8fd9\u4e2a\u6587\u4ef6\u8981**\u539f\u6837**\u7c98\u8fdb lib/client.js\uff08\u624b\u7ef4\u62a4
+ * \u7684 esbuild bundle\uff0c\u4ed3\u5e93\u6ca1\u6709\u6784\u5efa\u94fe\uff09\u3002\u6280\u80fd\u5217\u8868\u4e0e\u5206\u7c7b\u51fd\u6570\u4e00\u5f8b\u8d70 props\uff0c\u6a21\u5757\u81ea\u8eab\u9664
+ * React \u5916\u96f6\u4f9d\u8d56\uff0c\u4e24\u4efd\u526f\u672c\u624d\u80fd\u9010\u5b57\u76f8\u540c\u3002
+ *
+ * \u6240\u6709\u5931\u8d25\u90fd\u6536\u655b\u5230\u9762\u677f\u91cc\u7684\u4e00\u884c\u7ea2\u5b57\uff1a\u5ba2\u6237\u7aef\u63d2\u4ef6 apply \u629b\u9519\u4f1a\u8ba9\u6574\u4e2a Web \u58f3\u8d77\u4e0d\u6765\u3002
+ *
+ * @param React - \u8c03\u7528\u65b9\u6ce8\u5165\u7684 React\uff08bundle \u91cc\u662f import_react.default\uff09\u3002
+ * @returns \u4e00\u4e2a\u63a5\u6536 `{ cwd, skills, categoryOf, categories }` \u7684\u7ec4\u4ef6\u3002
+ */
+function createPresetManager(React) {
+  const h = React.createElement
+
+  const CHIP = {
+    padding: '3px 10px',
+    borderRadius: '999px',
+    border: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.35))',
+    background: 'transparent',
+    color: 'inherit',
+    fontSize: '12px',
+    lineHeight: '18px',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  }
+  const CHIP_ON = {
+    ...CHIP,
+    borderColor: 'transparent',
+    background: 'var(--dsw-alias-bg-accent, rgba(64,120,255,0.16))',
+    fontWeight: 600,
+  }
+  const BTN = {
+    padding: '4px 12px',
+    borderRadius: '8px',
+    border: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.35))',
+    background: 'transparent',
+    color: 'inherit',
+    fontSize: '12px',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  }
+
+  const DEFAULT_ID = '__default__'
+
+  async function getJson(url) {
+    const response = await fetch(url, { method: 'GET' })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok || payload?.ok !== true) throw new Error(String(payload?.error ?? `HTTP ${response.status}`))
+    return payload
+  }
+
+  async function postJson(body) {
+    const response = await fetch('/dsh-skill-catalog/presets', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-dsh-skill-catalog': '1' },
+      body: JSON.stringify(body),
+    })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok || payload?.ok !== true) throw new Error(String(payload?.error ?? `HTTP ${response.status}`))
+    return payload
+  }
+
+  return function PresetManager(props) {
+    const cwd = typeof props?.cwd === 'string' ? props.cwd : ''
+    const skills = Array.isArray(props?.skills) ? props.skills : []
+    const categoryOf = typeof props?.categoryOf === 'function' ? props.categoryOf : () => ''
+    // \u5206\u7c7b\u6309\u94ae\u4e0d\u8981\u6c42\u8c03\u7528\u65b9\u4e00\u5b9a\u4f20 CATEGORIES\uff1a\u6ca1\u4f20\u5c31\u6309\u73b0\u6709\u6280\u80fd\u5b9e\u9645\u51fa\u73b0\u7684\u5206\u7c7b\u63a8\u5bfc\uff0c
+    // \u8fd9\u6837\u5185\u8054\u8fdb bundle \u65f6\u4e0d\u5fc5\u628a\u5206\u7c7b\u8868\u518d\u590d\u5236\u4e00\u4efd\u3002
+    const categories = Array.isArray(props?.categories) && props.categories.length > 0
+      ? props.categories
+      : [...new Set(skills.map((skill) => categoryOf(skill)).filter((key) => typeof key === 'string' && key !== ''))]
+        .map((key) => ({ key }))
+
+    const [loading, setLoading] = React.useState(true)
+    const [busy, setBusy] = React.useState(false)
+    const [error, setError] = React.useState('')
+    const [notice, setNotice] = React.useState('')
+    const [presets, setPresets] = React.useState([])
+    const [bindings, setBindings] = React.useState({})
+    /** \u5f53\u524d\u4efb\u52a1\u7ed1\u7684\u9884\u8bbe id\uff0c`null` = \u9ed8\u8ba4\uff08\u4e0d\u9650\u5236\uff09\u3002 */
+    const [current, setCurrent] = React.useState(null)
+    /** \u6b63\u5728\u7f16\u8f91\u7684\u9884\u8bbe\uff1a`{ id, name, skills: string[] }`\uff0c`id === null` \u8868\u793a\u8fd8\u6ca1\u5b58\u8fc7\u3002 */
+    const [draft, setDraft] = React.useState(null)
+    const [query, setQuery] = React.useState('')
+    const [confirmDelete, setConfirmDelete] = React.useState(false)
+    const saveTimer = React.useRef(0)
+
+    const load = React.useCallback(async () => {
+      setLoading(true)
+      setError('')
+      try {
+        const payload = await getJson(`/dsh-skill-catalog/presets?cwd=${encodeURIComponent(cwd)}`)
+        setPresets(Array.isArray(payload.presets) ? payload.presets : [])
+        setBindings(payload.bindings !== null && typeof payload.bindings === 'object' ? payload.bindings : {})
+        setCurrent(typeof payload.current === 'string' ? payload.current : null)
+      } catch (failure) {
+        setError(String(failure?.message ?? failure))
+      } finally {
+        setLoading(false)
+      }
+    }, [cwd])
+
+    React.useEffect(() => { void load() }, [load])
+    React.useEffect(() => () => window.clearTimeout(saveTimer.current), [])
+
+    const persist = React.useCallback(async (next) => {
+      if (next === null || next.id === null) return
+      setBusy(true)
+      setError('')
+      try {
+        const payload = await postJson({
+          action: 'save',
+          preset: { id: next.id ?? undefined, name: next.name, skills: next.skills },
+        })
+        setPresets(Array.isArray(payload.presets) ? payload.presets : [])
+        setBindings(payload.bindings !== null && typeof payload.bindings === 'object' ? payload.bindings : {})
+      } catch (failure) {
+        setError(String(failure?.message ?? failure))
+      } finally {
+        setBusy(false)
+      }
+    }, [])
+
+    /** \u8fd8\u6ca1\u5199\u76d8\u7684\u6539\u52a8\uff1a\u5207\u5230\u522b\u7684\u9884\u8bbe\u524d\u5fc5\u987b\u5148\u843d\u76d8\uff0c\u5426\u5219\u521a\u6539\u7684\u540d\u5b57\u4f1a\u9759\u9ed8\u4e22\u5931\u3002 */
+    const pendingRef = React.useRef(null)
+
+    const flush = React.useCallback(async () => {
+      window.clearTimeout(saveTimer.current)
+      const pending = pendingRef.current
+      pendingRef.current = null
+      if (pending !== null) await persist(pending)
+    }, [persist])
+
+    /** \u6539\u52a8\u5148\u843d\u5230\u672c\u5730\uff0c\u505c\u987f\u4e00\u4e0b\u518d\u5199\u76d8\uff08\u8fde\u7eed\u52fe\u9009\u4e0d\u4f1a\u6253\u51fa\u5341\u51e0\u4e2a\u8bf7\u6c42\uff09\u3002 */
+    const edit = (next) => {
+      setDraft(next)
+      setNotice('')
+      window.clearTimeout(saveTimer.current)
+      pendingRef.current = next
+      saveTimer.current = window.setTimeout(() => {
+        pendingRef.current = null
+        void persist(next)
+      }, 600)
+    }
+
+    const selectPreset = (preset) => {
+      void flush()
+      setConfirmDelete(false)
+      setQuery('')
+      setDraft({ id: preset.id, name: preset.name, skills: [...preset.skills] })
+    }
+
+    const createPreset = async () => {
+      await flush()
+      setConfirmDelete(false)
+      setQuery('')
+      setBusy(true)
+      setError('')
+      try {
+        const payload = await postJson({
+          action: 'save',
+          preset: { name: `\u65b0\u9884\u8bbe ${presets.length + 1}`, skills: [] },
+        })
+        setPresets(Array.isArray(payload.presets) ? payload.presets : [])
+        setBindings(payload.bindings !== null && typeof payload.bindings === 'object' ? payload.bindings : {})
+        setDraft({ id: payload.preset.id, name: payload.preset.name, skills: [] })
+      } catch (failure) {
+        setError(String(failure?.message ?? failure))
+      } finally {
+        setBusy(false)
+      }
+    }
+
+    const duplicatePreset = async () => {
+      if (draft === null || draft.id === null) return
+      await flush()
+      setBusy(true)
+      setError('')
+      try {
+        const payload = await postJson({
+          action: 'save',
+          preset: { name: `${draft.name} \u526f\u672c`, skills: draft.skills },
+        })
+        setPresets(Array.isArray(payload.presets) ? payload.presets : [])
+        setDraft({ id: payload.preset.id, name: payload.preset.name, skills: [...payload.preset.skills] })
+        setNotice('\u5df2\u6d3e\u751f\u4e00\u4efd\u526f\u672c\uff0c\u5b83\u4e0d\u518d\u8ddf\u968f\u539f\u9884\u8bbe')
+      } catch (failure) {
+        setError(String(failure?.message ?? failure))
+      } finally {
+        setBusy(false)
+      }
+    }
+
+    const affectedCount = draft === null || draft.id === null
+      ? 0
+      : Object.values(bindings).filter((id) => id === draft.id).length
+
+    const removePreset = async () => {
+      if (draft === null || draft.id === null) return
+      await flush()
+      setBusy(true)
+      setError('')
+      try {
+        const payload = await postJson({ action: 'delete', id: draft.id })
+        const affected = Array.isArray(payload.affected) ? payload.affected.length : 0
+        setPresets(Array.isArray(payload.presets) ? payload.presets : [])
+        setBindings(payload.bindings !== null && typeof payload.bindings === 'object' ? payload.bindings : {})
+        setCurrent(null)
+        setDraft(null)
+        setConfirmDelete(false)
+        setNotice(affected > 0 ? `\u9884\u8bbe\u5df2\u5220\u9664\uff0c${affected} \u4e2a\u4efb\u52a1\u56de\u843d\u5230\u9ed8\u8ba4\uff08\u4e0d\u9650\u5236\uff09` : '\u9884\u8bbe\u5df2\u5220\u9664')
+      } catch (failure) {
+        setError(String(failure?.message ?? failure))
+      } finally {
+        setBusy(false)
+      }
+    }
+
+    const bindTask = async (presetId) => {
+      if (cwd === '') {
+        setError('\u62ff\u4e0d\u5230\u5f53\u524d\u4efb\u52a1\u7684\u76ee\u5f55\uff0c\u65e0\u6cd5\u7ed1\u5b9a')
+        return
+      }
+      setBusy(true)
+      setError('')
+      try {
+        const payload = await postJson({ action: 'bind', cwd, presetId })
+        setCurrent(typeof payload.bound === 'string' ? payload.bound : null)
+        setBindings(payload.bindings !== null && typeof payload.bindings === 'object' ? payload.bindings : {})
+        const target = presetId === null
+          ? '\u8fd9\u4e2a\u4efb\u52a1\u5df2\u6062\u590d\u4e3a\u9ed8\u8ba4\uff08\u4e0d\u9650\u5236\uff09'
+          : `\u8fd9\u4e2a\u4efb\u52a1\u5df2\u7ed1\u5b9a\u300c${presets.find((p) => p.id === presetId)?.name ?? presetId}\u300d`
+        setNotice(`${target}\uff0c\u4e0b\u4e00\u4e2a\u6d88\u606f\u8d77\u751f\u6548`)
+      } catch (failure) {
+        setError(String(failure?.message ?? failure))
+      } finally {
+        setBusy(false)
+      }
+    }
+
+    const toggleSkill = (name) => {
+      if (draft === null) return
+      const set = new Set(draft.skills)
+      if (set.has(name)) set.delete(name)
+      else set.add(name)
+      edit({ ...draft, skills: [...set] })
+    }
+
+    const addCategory = (key) => {
+      if (draft === null) return
+      const set = new Set(draft.skills)
+      for (const skill of skills) {
+        if (categoryOf(skill) === key) set.add(skill.name)
+      }
+      edit({ ...draft, skills: [...set] })
+    }
+
+    const dropCategory = (key) => {
+      if (draft === null) return
+      const drop = new Set(skills.filter((skill) => categoryOf(skill) === key).map((skill) => skill.name))
+      edit({ ...draft, skills: draft.skills.filter((name) => !drop.has(name)) })
+    }
+
+    const labelOf = (presetId) => presets.find((preset) => preset.id === presetId)?.name ?? null
+    const currentName = current === null ? null : labelOf(current)
+
+    const visibleSkills = skills.filter((skill) => {
+      if (query === '') return true
+      const needle = query.toLowerCase()
+      return skill.name.toLowerCase().includes(needle) || String(skill.description ?? '').toLowerCase().includes(needle)
+    })
+
+    return h('div', { style: { display: 'flex', flexDirection: 'column', minHeight: '0', flex: '1 1 auto' } },
+      // \u5f53\u524d\u4efb\u52a1 + \u7ed1\u5b9a\u72b6\u6001
+      h('div', {
+        style: {
+          padding: '8px 14px',
+          fontSize: '12px',
+          opacity: 0.75,
+          borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.12))',
+        },
+      }, currentName === null
+        ? '\u5f53\u524d\u4efb\u52a1\uff1a\u9ed8\u8ba4\u9884\u8bbe\uff08\u4e0d\u9650\u5236\uff0c\u5168\u90e8\u6280\u80fd\u53ef\u7528\uff09'
+        : `\u5f53\u524d\u4efb\u52a1\uff1a\u7ed1\u5b9a\u300c${currentName}\u300d`),
+
+      error !== '' && h('div', { style: { padding: '8px 14px', color: '#d1242f', fontSize: '12px' } }, error),
+      notice !== '' && h('div', { style: { padding: '8px 14px', color: '#1a7f37', fontSize: '12px' } }, notice),
+
+      // \u9884\u8bbe chips
+      h('div', {
+        style: {
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '6px',
+          padding: '10px 14px',
+          borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.12))',
+        },
+      },
+        h('button', {
+          type: 'button',
+          style: draft === null ? CHIP_ON : CHIP,
+          onClick: () => { setDraft(null); setConfirmDelete(false); setNotice('') },
+        }, '\u9ed8\u8ba4\uff08\u4e0d\u9650\u5236\uff09'),
+        presets.map((preset) => h('button', {
+          key: preset.id,
+          type: 'button',
+          style: draft !== null && draft.id === preset.id ? CHIP_ON : CHIP,
+          onClick: () => selectPreset(preset),
+        }, `${preset.name}${preset.id === current ? ' \u25cf' : ''}`)),
+        h('button', {
+          type: 'button',
+          style: { ...CHIP, borderStyle: 'dashed' },
+          disabled: busy,
+          onClick: () => void createPreset(),
+        }, '\uff0b \u65b0\u5efa'),
+      ),
+
+      draft === null
+        ? h('div', { style: { padding: '18px 14px', fontSize: '12px', opacity: 0.7 } },
+          loading ? '\u8bfb\u53d6\u4e2d\u2026' : '\u9009\u4e00\u4e2a\u9884\u8bbe\u6765\u7f16\u8f91\uff0c\u6216\u300c\uff0b \u65b0\u5efa\u300d\u3002\u9ed8\u8ba4\uff08\u4e0d\u9650\u5236\uff09\u4e0d\u9700\u8981\u7f16\u8f91 \u2014\u2014 \u5b83\u5c31\u662f\u300c\u4ec0\u4e48\u90fd\u653e\u884c\u300d\u3002')
+        : h('div', { style: { display: 'flex', flexDirection: 'column', minHeight: '0', flex: '1 1 auto' } },
+          // \u540d\u5b57 + \u64cd\u4f5c
+          h('div', {
+            style: {
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 14px 6px',
+            },
+          },
+            h('input', {
+              value: draft.name,
+              onChange: (event) => edit({ ...draft, name: event.target.value }),
+              placeholder: '\u9884\u8bbe\u540d\u5b57',
+              style: {
+                flex: '1 1 auto',
+                minWidth: '0',
+                padding: '5px 9px',
+                borderRadius: '8px',
+                border: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.35))',
+                background: 'transparent',
+                color: 'inherit',
+                fontSize: '13px',
+              },
+            }),
+            h('button', { type: 'button', style: BTN, disabled: busy, onClick: () => void duplicatePreset() }, '\u6d3e\u751f\u526f\u672c'),
+            confirmDelete
+              ? h('button', {
+                type: 'button',
+                style: { ...BTN, color: '#d1242f', borderColor: '#d1242f' },
+                disabled: busy,
+                onClick: () => void removePreset(),
+              }, affectedCount > 0 ? `\u786e\u8ba4\u5220\u9664\uff08\u5f71\u54cd ${affectedCount} \u4e2a\u4efb\u52a1\uff09` : '\u786e\u8ba4\u5220\u9664')
+              : h('button', {
+                type: 'button',
+                style: BTN,
+                disabled: busy,
+                onClick: () => setConfirmDelete(true),
+              }, '\u5220\u9664'),
+          ),
+
+          // \u5206\u7c7b\u6279\u91cf
+          h('div', {
+            style: { display: 'flex', flexWrap: 'wrap', gap: '5px', padding: '4px 14px 8px' },
+          },
+            h('span', { style: { fontSize: '11px', opacity: 0.6, alignSelf: 'center' } }, '\u6309\u5206\u7c7b\uff1a'),
+            categories.map((category) => h('button', {
+              key: category.key,
+              type: 'button',
+              style: CHIP,
+              disabled: busy,
+              title: '\u70b9\u4e00\u4e0b\u628a\u8fd9\u4e00\u7c7b\u7684\u6280\u80fd\u5168\u90e8\u52a0\u5165\uff1b\u6309\u4f4f Shift \u70b9\u5219\u6574\u7c7b\u79fb\u9664',
+              onClick: (event) => (event.shiftKey ? dropCategory(category.key) : addCategory(category.key)),
+            }, category.key)),
+          ),
+
+          // \u641c\u7d22
+          h('div', { style: { padding: '0 14px 6px' } },
+            h('input', {
+              value: query,
+              onChange: (event) => setQuery(event.target.value),
+              placeholder: '\u7b5b\u9009\u6280\u80fd\u2026',
+              style: {
+                width: '100%',
+                boxSizing: 'border-box',
+                padding: '5px 9px',
+                borderRadius: '8px',
+                border: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.3))',
+                background: 'transparent',
+                color: 'inherit',
+                fontSize: '12px',
+              },
+            }),
+          ),
+
+          // \u6280\u80fd\u52fe\u9009
+          h('div', { style: { flex: '1 1 auto', overflowY: 'auto', minHeight: '80px', padding: '0 8px 6px' } },
+            visibleSkills.length === 0
+              ? h('div', { style: { padding: '18px', textAlign: 'center', fontSize: '12px', opacity: 0.7 } }, '\u6ca1\u6709\u5339\u914d\u7684\u6280\u80fd')
+              : visibleSkills.map((skill) => {
+                const on = draft.skills.includes(skill.name)
+                return h('label', {
+                  key: skill.name,
+                  style: {
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '9px',
+                    padding: '6px 8px',
+                    borderRadius: '8px',
+                    cursor: busy ? 'default' : 'pointer',
+                  },
+                },
+                  h('input', {
+                    type: 'checkbox',
+                    checked: on,
+                    disabled: busy,
+                    onChange: () => toggleSkill(skill.name),
+                    style: { marginTop: '2px', flex: 'none' },
+                  }),
+                  h('div', { style: { minWidth: '0' } },
+                    h('div', { style: { fontFamily: 'ui-monospace, monospace', fontSize: '12px' } }, skill.name),
+                    skill.description !== undefined && String(skill.description) !== '' && h('div', {
+                      style: {
+                        fontSize: '11px',
+                        opacity: 0.62,
+                        marginTop: '1px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      },
+                    }, String(skill.description)),
+                  ),
+                )
+              }),
+          ),
+
+          // \u7ed1\u5b9a
+          h('div', {
+            style: {
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '9px 14px 12px',
+              borderTop: '1px solid var(--dsw-alias-border-l1, rgba(128,128,128,0.18))',
+            },
+          },
+            h('button', {
+              type: 'button',
+              style: { ...BTN, fontWeight: 600 },
+              disabled: busy || draft.id === null,
+              onClick: () => void bindTask(draft.id),
+            }, current === draft.id ? '\u5df2\u7ed1\u5b9a\u5230\u5f53\u524d\u4efb\u52a1' : '\u7ed1\u5b9a\u5230\u5f53\u524d\u4efb\u52a1'),
+            current !== null && h('button', {
+              type: 'button',
+              style: BTN,
+              disabled: busy,
+              onClick: () => void bindTask(null),
+            }, '\u53d6\u6d88\u7ed1\u5b9a'),
+            h('div', { style: { marginLeft: 'auto', fontSize: '11px', opacity: 0.6 } },
+              busy ? '\u4fdd\u5b58\u4e2d\u2026' : `${draft.skills.length} / ${skills.length} \u4e2a\u6280\u80fd`),
+          ),
+        ),
+    )
+  }
+}
+var PresetManager = createPresetManager(import_react.default);
+// #endregion src/client/preset-manager.js
+
+// #region src/client/workspace-menu.js (inlined by scripts/inline-client-lib.mjs)
+/**
+ * dsh-skill-catalog \u2014 \u4fa7\u8fb9\u680f**\u4efb\u52a1\u884c**\u300c\u2026\u300d\u83dc\u5355\u91cc\u7684\u300c\u6280\u80fd\u9884\u8bbe\u300d\u5b50\u83dc\u5355\u3002
+ *
+ * \u4e3a\u4ec0\u4e48\u8d70 `contextMenus` \u800c\u4e0d\u662f slot\uff1a\u5de5\u4f5c\u533a\u884c\u6ca1\u6709\u4efb\u4f55\u5b50 slot\uff08`sidebar.workspaces`
+ * \u662f single kind\uff0c\u6574\u5757\u53ea\u80fd\u6709\u4e00\u4e2a\u5360\u7528\u8005\uff09\uff0c\u800c `ctx.contextMenus.register({ target:
+ * 'workspace' })` \u662f\u5b98\u65b9\u81ea\u5df1\u52a0\u5de5\u4f5c\u533a\u83dc\u5355\u9879\u7684\u901a\u9053 \u2014\u2014 \u5b98\u65b9 ui-open-in-app \u5c31\u662f\u8fd9\u4e48
+ * \u5f80\u300c\u2026\u300d\u91cc\u585e\u300c\u5728\u6587\u4ef6\u5939\u663e\u793a\u300d\u7684\u3002`resolve` \u6bcf\u6b21\u6253\u5f00\u83dc\u5355\u65f6\u91cd\u8dd1\uff0c\u6240\u4ee5\u83dc\u5355\u9879\u6587\u6848\u80fd
+ * \u5b9e\u65f6\u53cd\u6620\u300c\u8fd9\u4e2a\u4efb\u52a1\u73b0\u5728\u7ed1\u7684\u662f\u54ea\u4e2a\u9884\u8bbe\u300d\u3002
+ *
+ * \u5b50\u83dc\u5355\uff08`children`\uff09\u8ba9\u300c\u9009\u9884\u8bbe\u300d\u4e00\u6b65\u5230\u4f4d\uff1a\u70b9\u9884\u8bbe\u540d\u5373\u7ed1\u5b9a\uff0c\u4e0d\u9700\u8981\u518d\u5f39\u4e00\u5c42\u7a97\u3002
+ * \u70b9\u51fb\u5e26 `children` \u7684\u7236\u9879\u4e0d\u4f1a\u6267\u884c `run`\uff08\u5b98\u65b9\u83dc\u5355\u5b9e\u73b0\u91cc\u660e\u786e `return` \u6389\uff09\u3002
+ *
+ * \u7eaf JS\u3001\u65e0 JSX\uff0c\u53ef\u539f\u6837\u5185\u8054\u8fdb lib/client.js\u3002
+ *
+ * @param ctx - \u5ba2\u6237\u7aef\u63d2\u4ef6\u4e0a\u4e0b\u6587\uff08\u8981\u53d6 `ctx.contextMenus`\uff09\u3002
+ * @returns \u6ce8\u9500\u51fd\u6570\uff1b`contextMenus` \u4e0d\u53ef\u7528\u65f6\u8fd4\u56de\u4e00\u4e2a\u7a7a\u51fd\u6570\uff0c\u7edd\u4e0d\u629b\u9519\u3002
+ */
+function installWorkspacePresetMenu(ctx) {
+  // \u26a0\ufe0f \u5fc5\u987b\u7528 `ctx.get('contextMenus')`\uff0c**\u4e0d\u8981**\u5199 `ctx.contextMenus`\u3002
+  //
+  // Cordis \u5bf9\u300c\u6ca1\u5728 inject \u91cc\u58f0\u660e\u8fc7\u7684\u670d\u52a1\u300d\u505a\u5c5e\u6027\u8bbf\u95ee\u65f6\u4f1a**\u76f4\u63a5\u629b\u9519**
+  // \uff08`cannot get property "contextMenus" without inject`\uff09\uff0c\u800c\u4e0d\u662f\u8fd4\u56de undefined\u3002
+  // \u8fd9\u4e2a\u9519\u8bef\u82e5\u53d1\u751f\u5728 `ctx.effect` \u7684 setup \u9636\u6bb5\uff0c\u63d2\u4ef6 fiber \u4f1a\u6c38\u4e45\u505c\u5728 `loading`\uff0c
+  // \u524d\u7aef\u542f\u52a8\u5ba1\u8ba1\u4e8e\u662f\u6574\u9875\u542f\u52a8\u5931\u8d25\uff1a
+  //     web boot: 1 entry did not activate
+  //     dsh-skill-catalog: loading
+  // \u4e0a\u4e00\u7248\u5c31\u662f\u6b7b\u5728\u8fd9\u4e00\u884c\u3002`ctx.get()` \u53ea\u662f\u62ff\u4e0d\u5230\u5c31\u8fd4\u56de undefined\uff0c\u4e0d\u4f1a\u629b\u3002
+  // \u540c\u4e8b\u53c2\u7167 `bundled-skills.js` \u7684\u8001\u505a\u6cd5\uff08\u300c\u53ea\u7528 ctx.get('skills')\uff0c\u4e0d\u5199\u8fdb inject\u300d\uff09\u3002
+  const menus = typeof ctx?.get === 'function' ? ctx.get('contextMenus') : undefined
+  if (menus === undefined || typeof menus.register !== 'function') {
+    console.warn('[dsh-skill-catalog] contextMenus \u4e0d\u53ef\u7528\uff1a\u4efb\u52a1\u884c\u300c\u6280\u80fd\u9884\u8bbe\u300d\u83dc\u5355\u672a\u6302\u8f7d')
+    return () => {}
+  }
+
+  /** \u8bfb\u4e00\u6b21\u9884\u8bbe\u5e93\uff1b\u5931\u8d25\u65f6\u964d\u7ea7\u4e3a\u300c\u53ea\u6709\u9ed8\u8ba4\u300d\u800c\u4e0d\u662f\u62a5\u9519\u3002 */
+  async function loadState(workspacePath, signal) {
+    const url = `/dsh-skill-catalog/presets?cwd=${encodeURIComponent(workspacePath ?? '')}`
+    const response = await fetch(url, { method: 'GET', signal })
+    const payload = await response.json().catch(() => ({}))
+    if (payload?.ok !== true) throw new Error(String(payload?.error ?? `HTTP ${response.status}`))
+    return {
+      presets: Array.isArray(payload.presets) ? payload.presets : [],
+      current: typeof payload.current === 'string' ? payload.current : null,
+    }
+  }
+
+  /** \u5199\u7ed1\u5b9a\uff1b\u6210\u529f\u7ed9\u4e00\u4e2a toast\uff0c\u5931\u8d25\u4e5f\u5982\u5b9e\u8bf4\u3002 */
+  async function bindWorkspace(workspacePath, presetId, presetName) {
+    try {
+      const response = await fetch('/dsh-skill-catalog/presets', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-dsh-skill-catalog': '1' },
+        body: JSON.stringify({ action: 'bind', cwd: workspacePath, presetId }),
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (payload?.ok !== true) throw new Error(String(payload?.error ?? `HTTP ${response.status}`))
+      const text = presetId === null
+        ? '\u8fd9\u4e2a\u4efb\u52a1\u5df2\u6062\u590d\u4e3a\u9ed8\u8ba4\uff08\u4e0d\u9650\u5236\uff09'
+        : `\u8fd9\u4e2a\u4efb\u52a1\u5df2\u7ed1\u5b9a\u300c${presetName ?? presetId}\u300d\uff0c\u4e0b\u4e00\u4e2a\u6d88\u606f\u8d77\u751f\u6548`
+      if (typeof menus.notify === 'function') menus.notify(text, true)
+      else console.log('[dsh-skill-catalog]', text)
+    } catch (error) {
+      const text = `\u7ed1\u5b9a\u5931\u8d25\uff1a${String(error?.message ?? error)}`
+      if (typeof menus.notify === 'function') menus.notify(text, false)
+      else console.warn('[dsh-skill-catalog]', text)
+    }
+  }
+
+  try {
+    return menus.register({
+      id: 'dsh-skill-catalog.workspace-preset',
+      target: 'workspace',
+      // \u5b98\u65b9\u5de5\u4f5c\u533a\u83dc\u5355\uff1arename 100 / reveal 200 / delete 300\u3002\u5939\u5728\u300c\u6253\u5f00\u300d\u4e0e\u300c\u5220\u9664\u300d
+      // \u4e4b\u95f4\uff0c\u7834\u574f\u6027\u52a8\u4f5c\u4ecd\u7136\u6392\u6700\u540e\u3002
+      order: 250,
+      resolve: async (target, signal) => {
+        const workspacePath = typeof target?.path === 'string' ? target.path : ''
+        let state
+        try {
+          state = await loadState(workspacePath, signal)
+        } catch (error) {
+          return [{
+            id: 'preset',
+            label: `\u6280\u80fd\u9884\u8bbe\uff1a\u8bfb\u53d6\u5931\u8d25`,
+            disabled: true,
+            failureLabel: String(error?.message ?? error),
+          }]
+        }
+        signal?.throwIfAborted?.()
+
+        const currentName = state.current === null
+          ? null
+          : state.presets.find((preset) => preset.id === state.current)?.name ?? null
+
+        const children = [
+          {
+            id: 'default',
+            label: '\u9ed8\u8ba4\uff08\u4e0d\u9650\u5236\uff09',
+            disabled: state.current === null,
+            run: () => bindWorkspace(workspacePath, null),
+          },
+          ...state.presets.map((preset) => ({
+            id: preset.id,
+            label: `${preset.name}\uff08${preset.skills.length} \u4e2a\u6280\u80fd\uff09`,
+            disabled: preset.id === state.current,
+            run: () => bindWorkspace(workspacePath, preset.id, preset.name),
+          })),
+        ]
+
+        return [{
+          id: 'preset',
+          label: currentName === null ? '\u6280\u80fd\u9884\u8bbe\uff1a\u9ed8\u8ba4\uff08\u4e0d\u9650\u5236\uff09' : `\u6280\u80fd\u9884\u8bbe\uff1a${currentName}`,
+          children,
+        }]
+      },
+    })
+  } catch (error) {
+    console.warn('[dsh-skill-catalog] \u4efb\u52a1\u884c\u83dc\u5355\u6ce8\u518c\u5931\u8d25\uff1a', String(error?.message ?? error))
+    return () => {}
+  }
+}
+// #endregion src/client/workspace-menu.js
 function apply(ctx) {
   void syncSharedState();
-  const listSkills = async (sessionId) => {
-    const remoteSkills = ctx.remote?.skills;
-    const connectionSkills = ctx.connection?.api?.skills;
-    const skills = remoteSkills ?? connectionSkills;
+  const remoteSkillApi = () => {
+    try {
+      if (ctx.remote?.skills !== void 0) return ctx.remote.skills;
+    } catch {
+    }
+    try {
+      const viaGet = typeof ctx.get === "function" ? ctx.get("remote") : void 0;
+      if (viaGet?.skills !== void 0) return viaGet.skills;
+    } catch {
+    }
+    return void 0;
+  };
+  const listSkills = async (sessionId, all = false) => {
+    const skills = remoteSkillApi() ?? ctx.connection?.api?.skills;
     if (skills === void 0 || typeof skills.list !== "function") {
       throw new Error("skills RPC unavailable (remote.skills / connection.api.skills)");
     }
     const controller = new AbortController();
-    const { result } = await skills.list({ sessionId }, controller.signal);
-    if (!result.ok) throw new Error(`skill.list failed: ${result.error?.code}: ${result.error?.message}`);
+    const response = await skills.list(all ? {} : { sessionId }, controller.signal);
+    const result = response?.result ?? response;
+    if (result?.ok !== true) throw new Error(`skill.list failed: ${result?.error?.code}: ${result?.error?.message}`);
     const raw = result.value?.skills ?? [];
     return raw.filter(isUserFacingSkill).map((skill) => ({
       name: skill.name,
@@ -27551,16 +28279,37 @@ function apply(ctx) {
     };
     const dispose = ctx.slots.inject(
       "conversation.input.right",
-      () => ctx.slots.register(
-        { name: "conversation.input.right", id: "skill-picker", order: 100, label: "Skill picker" },
-        PickerWithCwd
-      )
+      () => {
+        const disposePicker = ctx.slots.register(
+          { name: "conversation.input.right", id: "skill-picker", order: 100, label: "Skill picker" },
+          PickerWithCwd
+        );
+        let disposeSession = () => {
+        };
+        try {
+          const SessionWithSkills = (slotProps) => import_react.default.createElement(SessionSkillsButton, {
+            ...slotProps,
+            listSkills
+          });
+          disposeSession = ctx.slots.register(
+            { name: "conversation.input.right", id: "session-skills", order: 110, label: "Session skills" },
+            SessionWithSkills
+          );
+        } catch (error) {
+          console.warn("[dsh-skill-catalog] session-skills slot not mounted:", String(error?.message ?? error));
+        }
+        return () => {
+          disposeSession();
+          disposePicker();
+        };
+      }
     );
     return () => {
       dispose();
       unsubscribeLegacyCwd();
     };
   }, "dsh-skill-catalog: composer input slot");
+  ctx.effect(() => installWorkspacePresetMenu(ctx), "dsh-skill-catalog: workspace preset menu");
   const trackPick = (name) => {
     const usage = loadUsage();
     const nextUsage = { ...usage, [name]: { count: (usage[name]?.count ?? 0) + 1, lastUsed: Date.now() } };
