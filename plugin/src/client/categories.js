@@ -94,6 +94,9 @@ export const CATEGORY_MAP = {
   'oil-ui': '设计',
   'motion-web': '设计',
   'oil-tone': '设计',
+  // 产出可探索的 HTML 图表（架构图 / 时序图 / 数据流）—— 交付物是视觉的，
+  // 所以归这里而不是「调研」：调研产出的是文字，它产出的是图。
+  'archify': '设计',
 
   // ── 文档：Office 与 Univer 两套，产出的是文件 ─────────────────────
   office: '文档',
@@ -121,6 +124,8 @@ export const CATEGORY_MAP = {
   'obsidian-curator': '调研',
   pr: '调研',
   retro: '调研',
+  // 它的用途是「把图片读成文字证据」——属于取信息，不产出代码也不改系统。
+  'modlens': '调研',
 
   // ── 技能：管这套技能本身 ──────────────────────────────────────────
   'writing-skills': '技能',
@@ -133,6 +138,8 @@ export const CATEGORY_MAP = {
   // ── 自动化：对外部世界动手 ────────────────────────────────────────
   'browser-skill': '自动化',
   'agent-browser': '自动化',
+  // DSH 内置的 dsh_browser_* 工具就是同一件事的官方版本。
+  'dsh-builtin-browser': '自动化',
   'dify-workflow': '自动化',
   'dify-deploy': '自动化',
   wizard: '自动化',

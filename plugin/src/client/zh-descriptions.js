@@ -51,6 +51,8 @@ export const ZH_DESCRIPTIONS = {
   // ── bundled：诊断 / 浏览器 / Office / Univer ───────────────────────
   'diagnose-windows-sandbox-acl': 'Windows 上遇到意料之外的 DSH 沙箱拒绝时使用：工作区写入或列目录失败、或一个本来可读的路径读不了。内置命令会检查该路径及其每一级上级，并在同一次运行中修复它证明存在的 ACL 问题。属于预期内的隔离拒绝则不需要修 ACL。',
   'browser-skill': '通过插件注入的 bsk_* 工具自动化操作用户已登录的 Chromium。用来读页面、填表单、操作标签页、检查页面活动、调试网站或测试 UI。',
+  'dsh-builtin-browser': 'DSH 内置浏览器：任务需要真实网页时用它——打开 URL、读取或抽取内容、填表并提交、上传附件、确认某个结果是否真的发生了、或页面/载体失效后恢复。讲清该挑哪个 dsh_browser_* 工具、怎么批量执行多步、以及怎么验证而不是靠猜。',
+  'modlens': '给纯文本模型补视觉能力：对话里出现图片路径或图片占位符（[Image #1]、[Unsupported Image]）而你看不到图片内容时，先用它把图片转成结构化文字证据——逐词转写、版面区域、语义、视觉线索，不要自己造 OCR 或用 PIL/tesseract。能直接看到图片就不要用。也用于询问 modlens 的安装、配置或切换视觉服务商。',
   'office': 'Office 文档总入口：创建、编辑、检视或转换 Word / Excel / PPT 与 PDF。先加载它来挑对应的工作流。',
   'office-docx': '创建、读取、编辑并检查 Word 文档（.docx），含报告、信函与带格式的表格。DOCX 作为输入或交付物时使用。运行 Office 命令前先加载本技能。除用户明确 opt out，否则只用自带的 LibreOffice，不要去找别的 LibreOffice 可执行文件。',
   'office-export-pdf': '用 LibreOffice Kit 把 Office 文档转成指定的 PDF。',
@@ -66,6 +68,7 @@ export const ZH_DESCRIPTIONS = {
   'univer-embed': '通过 DSH 工具与 Lite 界面把一个 Univer Unit 嵌进另一个 Unit。当 Sheet、Doc、Slide、Base、Board、仪表盘、报告、演示文稿、数据库或画布需要展示或交互同一 .univer 文件里另一个 Unit 的内容时使用。',
   'univer-sheet': '通过 DSH 工具与 Lite 界面读取、写入、格式化、计算并验证 Univer Sheet Unit。任何表格值、公式、区域、表格、图表、图片、数据验证、筛选、透视、富文本、xlsx/csv/tsv 导入导出，或 Sheet Unit 任务都应主动使用。',
   'univer-slide': '通过 DSH 工具与 Lite 界面创建、重设计、编辑、检视、lint、导出并评审 Univer Slide Unit。任何交付物是演示文稿的任务都应主动使用；生成的页面应用 univer_compile_svg，每个改过的页面都应跑 univer_lint。',
+  'archify': '把系统架构、工作流、时序、数据流、生命周期/状态、ERD、类图、树、时间线、瀑布图做成可探索的独立 HTML 图表，带深/浅主题、动效与图片/SVG/WebM 导出。接受自然语言需求或 Mermaid 输入；需要反映真实代码时会去查仓库证据。用于可视化系统、API 调用、流水线、数据表结构、历史、耗时或日常步骤。也可把一段回答做成一页解释页（结论先行、分栏、内嵌图表）。不用于仪表盘。',
 
   // ── custom：superpowers 工作流技能 ─────────────────────────────────
   'brainstorming': '任何创作性工作之前必须使用——新建功能、构建组件、添加能力或修改行为。在动手之前先把用户意图、需求与设计探清楚。',
